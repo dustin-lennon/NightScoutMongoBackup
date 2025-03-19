@@ -1,0 +1,71 @@
+version: 2
+updates:
+  # ✅ Keep pnpm (npm-based) dependencies up to date
+  - package-ecosystem: "npm"
+    directory: "/"  # Root directory
+    schedule:
+      interval: "weekly"
+      time: "06:00"  # Runs every week at 6 AM UTC
+    open-pull-requests-limit: 5
+    versioning-strategy: "increase"
+    assignees:
+      - "dustin-lennon"
+    reviewers:
+      - "dustin-lennon"
+    labels:
+      - "dependencies"
+      - "pnpm"
+    ignore:
+      - dependency-name: "typescript"
+        versions: ["<5.0.0"]
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+
+  # ✅ Keep GitHub Actions up to date
+  - package-ecosystem: "github-actions"
+    directory: "/"  
+    schedule:
+      interval: "weekly"
+      time: "06:00"
+    open-pull-requests-limit: 3
+    assignees:
+      - "dustin-lennon"
+    reviewers:
+      - "dustin-lennon"
+    labels:
+      - "dependencies"
+      - "github-actions"
+
+  # ✅ Keep Docker dependencies updated (if applicable)
+  - package-ecosystem: "docker"
+    directory: "/"  
+    schedule:
+      interval: "weekly"
+      time: "06:00"
+    open-pull-requests-limit: 3
+    assignees:
+      - "dustin-lennon"
+    reviewers:
+      - "dustin-lennon"
+    labels:
+      - "dependencies"
+      - "docker"
+
+  # ✅ Keep Security Updates Automatically Applied
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 5
+    labels:
+      - "security"
+      - "pnpm"
+    reviewers:
+      - "dustin-lennon"
+    assignees:
+      - "dustin-lennon"
+    allow:
+      - dependency-type: "direct"
+    ignore:
+      - dependency-name: "eslint"
