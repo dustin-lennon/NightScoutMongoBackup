@@ -1,6 +1,6 @@
 version: 2
 updates:
-  # ✅ Keep pnpm (npm-based) dependencies up to date
+  # ✅ Keep pnpm (npm-based) dependencies up to date (including security updates)
   - package-ecosystem: "npm"
     directory: "/"  # Root directory
     schedule:
@@ -28,8 +28,10 @@ updates:
       commit-message:
         prefix: "chore"
         include: "scope"
+      ignore:
+        - update-type: "version-update:semver-major"
 
-  # ✅ Keep GitHub Actions up to date
+  # ✅ Keep GitHub Actions dependencies up to date
   - package-ecosystem: "github-actions"
     directory: "/"  
     schedule:
@@ -69,7 +71,7 @@ updates:
         prefix: "chore"
         include: "scope"
 
-  # ✅ Keep Security Updates Automatically Applied
+  # ✅ Keep Security Updates Automatically Applied (only minor and patch updates)
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
@@ -86,3 +88,10 @@ updates:
       - dependency-type: "direct"
     ignore:
       - dependency-name: "eslint"
+    automerge:
+      strategy: "squash"
+      commit-message:
+        prefix: "chore"
+        include: "scope"
+      ignore:
+        - update-type: "version-update:semver-major"
