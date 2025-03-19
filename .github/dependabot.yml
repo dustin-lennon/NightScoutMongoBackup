@@ -24,13 +24,6 @@ updates:
       include: "scope"
     allow:
       - dependency-type: "direct"
-    automerge:
-      strategy: "squash"
-      commit-message:
-        prefix: "chore"
-        include: "scope"
-      ignore:
-        - update-type: "version-update:semver-major"
 
   # ✅ Keep GitHub Actions dependencies up to date
   - package-ecosystem: "github-actions"
@@ -46,11 +39,6 @@ updates:
     labels:
       - "dependencies"
       - "github-actions"
-    automerge:
-      strategy: "squash"
-      commit-message:
-        prefix: "chore"
-        include: "scope"
 
   # ✅ Keep Docker dependencies updated (if applicable)
   - package-ecosystem: "docker"
@@ -66,8 +54,3 @@ updates:
     labels:
       - "dependencies"
       - "docker"
-    automerge:
-      strategy: "squash"
-      commit-message:
-        prefix: "chore"
-        include: "scope"
