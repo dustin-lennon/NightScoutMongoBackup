@@ -4,8 +4,7 @@ updates:
   - package-ecosystem: "npm"
     directory: "/"  # Root directory
     schedule:
-      interval: "weekly"
-      time: "06:00"  # Runs every week at 6 AM UTC
+      interval: "daily"  # Runs security updates daily & dependencies weekly
     open-pull-requests-limit: 5
     versioning-strategy: "increase"
     assignees:
@@ -15,9 +14,11 @@ updates:
     labels:
       - "dependencies"
       - "pnpm"
+      - "security"
     ignore:
       - dependency-name: "typescript"
         versions: ["<5.0.0"]
+      - dependency-name: "eslint"
     commit-message:
       prefix: "deps"
       include: "scope"
@@ -70,28 +71,3 @@ updates:
       commit-message:
         prefix: "chore"
         include: "scope"
-
-  # ✅ Keep Security Updates Automatically Applied (only minor and patch updates)
-  - package-ecosystem: "npm"
-    directory: "/"
-    schedule:
-      interval: "daily"
-    open-pull-requests-limit: 5
-    labels:
-      - "security"
-      - "pnpm"
-    reviewers:
-      - "dustin-lennon"
-    assignees:
-      - "dustin-lennon"
-    allow:
-      - dependency-type: "direct"
-    ignore:
-      - dependency-name: "eslint"
-    automerge:
-      strategy: "squash"
-      commit-message:
-        prefix: "chore"
-        include: "scope"
-      ignore:
-        - update-type: "version-update:semver-major"
