@@ -27,7 +27,7 @@ updates:
 
   # ✅ Keep GitHub Actions dependencies up to date
   - package-ecosystem: "github-actions"
-    directory: "/"  
+    directory: "/"
     schedule:
       interval: "weekly"
       time: "06:00"
@@ -42,7 +42,7 @@ updates:
 
   # ✅ Keep Docker dependencies updated (if applicable)
   - package-ecosystem: "docker"
-    directory: "/"  
+    directory: "/"
     schedule:
       interval: "weekly"
       time: "06:00"
