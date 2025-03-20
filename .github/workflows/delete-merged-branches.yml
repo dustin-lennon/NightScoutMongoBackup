@@ -12,18 +12,18 @@ jobs:
       pull-requests: read
     steps:
       - name: Check if PR was merged
-        if: ${{ github.event.pull_request.merged }}
-        run: echo "PR was merged, checking branch name..."
+        if: github.event.pull_request.merged == true
+        run: echo "✅ PR was merged. Checking branch name..."
 
       - name: Delete `feature/*`, `hotfix/*`, and `bugfix/*` branches
-        if: ${{ github.event.pull_request.merged }} &&
-          (startsWith(github.head_ref, 'feature/') ||
-           startsWith(github.head_ref, 'hotfix/') ||
-           startsWith(github.head_ref, 'bugfix/'))
-
+        if: github.event.pull_request.merged == true &&
+          (startsWith(github.event.pull_request.head.ref, 'feature/') ||
+           startsWith(github.event.pull_request.head.ref, 'hotfix/') ||
+           startsWith(github.event.pull_request.head.ref, 'bugfix/'))
         run: |
-          BRANCH_NAME=${{ github.event.pull_request.head.label }}
-          echo "Deleting branch $BRANCH_NAME"
-          curl -X DELETE -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${{ github.repository }}/git/refs/heads/$BRANCH_NAME"
+          BRANCH_NAME=${{ github.event.pull_request.head.ref }}
+          echo "🚀 Attempting to delete branch: $BRANCH_NAME"
+
+          curl -X DELETE -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+               -H "Accept: application/vnd.github+json" \
+               "https://api.github.com/repos/${{ github.repository }}/git/refs/heads/$BRANCH_NAME"
