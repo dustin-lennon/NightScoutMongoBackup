@@ -1,0 +1,6 @@
+{
+    "sonarlint.connectedMode.project": {
+        "connectionId": "dustin-lennon",
+        "projectKey": "dustin-lennon_NightScoutMongoBackup"
+    }
+}

@@ -1,0 +1,44 @@
+name: Security Analysis
+
+on:
+  pull_request:
+    branches: [develop]
+  push:
+    branches:
+      - release/**
+
+jobs:
+  sonarcloud:
+    name: SonarQube Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  codeql:
+    name: CodeQL Security Scan
+    runs-on: ubuntu-latest
+
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: CodeQL Anaysis Initialziation
+        uses: github/codeql-action/init@v3
+        with:
+          languages: typescript
+
+      - name: CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
