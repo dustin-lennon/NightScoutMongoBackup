@@ -1,4 +1,4 @@
-name: Lint Code
+name: Run Lint Code Check
 
 on:
   pull_request:
