@@ -1,44 +1,71 @@
-name: Run Security Analysis
+name: Security and Quality Checks
 
 on:
   pull_request:
-    branches: [develop]
+    branches: [ develop ]
   push:
-    branches:
-      - release/**
+    branches: [ release/** ]
 
 jobs:
   sonarcloud:
-    name: SonarQube Scan
+    name: SonarQube Analysis
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # Important for SonarCloud to detect changed code
 
-      - name: Run SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v5
+      - name: Establish pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run SonarQube Scanner
+        uses: actions/sonarcloud@v2
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=NightScoutMongoBackup
+            -Dsonar.organization=dustin-lennon
+            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.sources=src
+            -Dsonar.tests=src/tests
+            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
 
   codeql:
-    name: CodeQL Security Scan
+    name: CodeQL Analysis
     runs-on: ubuntu-latest
-
     permissions:
+      security-events: write
       actions: read
       contents: read
-      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'javascript-typescript' ]
+
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: CodeQL Anaysis Initialziation
+      - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
-          languages: typescript
+          languages: ${{ matrix.language }}
 
-      - name: CodeQL Analysis
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
