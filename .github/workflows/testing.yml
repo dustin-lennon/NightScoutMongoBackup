@@ -28,4 +28,6 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run Tests
+        env:
+          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
         run: pnpm run test
