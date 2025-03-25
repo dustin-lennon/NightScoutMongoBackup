@@ -1,6 +1,14 @@
-node_modules/
+# dependencies
+node_modules
+
+# sst
+.sst
+.build
+
+# misc
 .env
-dist/
+dist
+.env*.local
 
 # Ignore Husky internal files
 .husky/_
