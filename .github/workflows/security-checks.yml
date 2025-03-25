@@ -31,6 +31,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Run code coverage
+        env:
+            DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+        run: pnpm run coverage
+
       - name: Run SonarQube Scanner
         uses: SonarSource/sonarqube-scan-action@v5
         env:
