@@ -17,7 +17,8 @@
     "commit": "git-cz",
     "cz": "git-cz",
     "test": "jest --clearCache && jest",
-    "prepare": "husky || trust"
+    "prepare": "husky || trust",
+    "coverage": "jest --coverage"
   },
   "author": "@dustin-lennon",
   "license": "MIT",
@@ -47,7 +48,7 @@
     "@sapphire/prettier-config": "^2.0.0",
     "@sapphire/ts-config": "^5.0.1",
     "@types/jest": "^29.5.14",
-    "@types/node": "^22.13.10",
+    "@types/node": "^22.13.13",
     "@types/ws": "^8.18.0",
     "@typescript-eslint/eslint-plugin": "^8.27.0",
     "@typescript-eslint/parser": "^8.28.0",
@@ -69,7 +70,7 @@
     "ts-jest": "^29.2.6",
     "tsc-watch": "^6.2.1",
     "typescript": "^5.8.2",
-    "typescript-eslint": "^8.27.0"
+    "typescript-eslint": "^8.28.0"
   },
   "prettier": "@sapphire/prettier-config",
   "resolutions": {
