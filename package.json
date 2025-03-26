@@ -17,7 +17,8 @@
     "commit": "git-cz",
     "cz": "git-cz",
     "test": "jest --clearCache && jest",
-    "prepare": "husky || trust"
+    "prepare": "husky || trust",
+    "coverage": "jest --coverage"
   },
   "author": "@dustin-lennon",
   "license": "MIT",
