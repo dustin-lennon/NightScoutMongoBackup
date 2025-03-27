@@ -45,7 +45,8 @@ jobs:
             -Dsonar.host.url=https://sonarcloud.io
             -Dsonar.sources=src
             -Dsonar.tests=src/tests
-            -Dsonar.test.inclusions=**/*.test.ts,**/*.test.ts
+            -Dsonar.test.inclusions=src/tests/**/*.spec.ts
+            -Dsonar.exclusions=src/tests/**,**/__mocks__/**
             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
 
   codeql:
