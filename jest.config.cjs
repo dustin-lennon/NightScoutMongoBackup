@@ -6,6 +6,7 @@ module.exports = {
     "^.+\\.(t|j)sx?$": "ts-jest"
   },
   moduleNameMapper: {
+    "^@sentry/node$": "<rootDir>/src/tests/__mocks__/@sentry/node.ts",
     "^(\\.{1,2}/.*)\\.js$": "$1",
     "ansi-regex": require.resolve("ansi-regex")
   },
