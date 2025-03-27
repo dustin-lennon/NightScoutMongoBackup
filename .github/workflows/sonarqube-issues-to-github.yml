@@ -1,0 +1,37 @@
+name: Sync SonarQube Issues to GitHub
+
+on:
+  schedule:
+    - cron: '0/15 0 * * *' # Every 15 minutes
+  workflow_dispatch: # Manually triggered
+
+jobs:
+  create_issues:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Fetch SonarQube issues
+        run: |
+          curl -s -u "${{ secrets.SONAR_TOKEN }}:" \
+            "https://sonarcloud.io//api/issues/search?componentKeys=dustin-lennon_NightScoutMongoBackup&resolved=false" \
+            -o sonar-issues.json
+
+      - name: Create GitHub issues
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const issues = JSON.parse(fs.readFileSync('sonar-issues.json', 'utf8')).issues;
+
+            for (const issue of issues.slice(0, 5)) { // limit to first 5 to prevent spam
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `[SonarQube] ${issue.message}`,
+                body: `**Component**: ${issue.component}\n**Severity**: ${issue.severity}\n\n${issue.message}\n\n[View in SonarQube](https://<YOUR-SONARQUBE-URL>/project/issues?id=<PROJECT-KEY>&open=${issue.key})`,
+                labels: ['sonarqube']
+              });
+            }
