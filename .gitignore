@@ -13,6 +13,7 @@ coverage
 .env
 dist
 .env*.local
+.env.me
 
 # Ignore Husky internal files
 .husky/_
