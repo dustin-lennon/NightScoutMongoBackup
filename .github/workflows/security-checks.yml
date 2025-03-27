@@ -44,7 +44,8 @@ jobs:
             -Dsonar.organization=dustin-lennon
             -Dsonar.host.url=https://sonarcloud.io
             -Dsonar.sources=src
-            -Dsonar.tests=src/tests/**
+            -Dsonar.tests=src/tests
+            -Dsonar.test.inclusions=**/*.test.ts,**/*.test.ts
             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
 
   codeql:
