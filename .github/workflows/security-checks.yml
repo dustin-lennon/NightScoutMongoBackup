@@ -10,7 +10,9 @@ on:
 
 jobs:
   sonarcloud:
-    if: github.ref_name == 'main'
+    if: |
+      github.event_name == 'push' && github.ref_name == 'main' ||
+      github.event_name == 'pull_request' && github.base_ref == 'main'
     name: SonarQube Analysis
     runs-on: ubuntu-latest
     steps:
@@ -41,6 +43,16 @@ jobs:
         uses: SonarSource/sonarqube-scan-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=dustin-lennon_NightScoutMongoBackup
+            -Dsonar.organization=dustin-lennon
+            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.sources=src
+            -Dsonar.tests=src/tests
+            -Dsonar.test.inclusions=src/tests/**/*.spec.ts
+            -Dsonar.exclusions=src/tests/**,**/__mocks__/**
+            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
 
   codeql:
     name: CodeQL Analysis
