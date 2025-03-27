@@ -1,6 +1,8 @@
 name: Sync SonarQube Issues to GitHub
 
 on:
+  schedule:
+    - cron: '0/15 0 * * *' # Every 15 minutes
   workflow_dispatch: # Manually triggered
 
 jobs:
