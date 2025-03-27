@@ -1,15 +1,23 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 
-jest.mock('@sentry/node');
+jest.mock('discord.js', () => {
+	const original = jest.requireActual('discord.js');
+	return {
+		...original,
+		ClientUser: function ClientUserMock() {}
+	};
+});
 
 import { Command, Listener } from '@sapphire/framework';
 import { mockLogger } from './__mocks__/mockLogger';
 
+jest.mock('@sentry/node');
 
 describe('Sentry Integration Tests', () => {
 	beforeEach(() => {
 		jest.resetModules(); // ensure fresh state
 		jest.clearAllMocks();
+		jest.restoreAllMocks();
 
 		// Suppress logger output during tests
 		jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -17,11 +25,18 @@ describe('Sentry Integration Tests', () => {
 
 	test('initializes Sentry correctly', () => {
 		jest.isolateModules(() => {
+			// Mocks moved to top of file
+
 			const Sentry = require('@sentry/node');
 			process.env.SENTRY_DSN = 'https://fake@dsn/123';
 			process.env.NODE_ENV = 'test';
 
-			require('../index');
+			const index = require('../index');
+			index.startBot();
+			const client = index.client;
+
+			index.attachErrorHandlers();
+			client.logger = mockLogger;
 
 			expect(Sentry.init).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -35,12 +50,18 @@ describe('Sentry Integration Tests', () => {
 
 	test('captures unhandled promise rejections', () => {
 		jest.isolateModules(() => {
+			// Mocks moved to top of file
+
 			process.env.SENTRY_DSN = 'https://fake@dsn/123';
 			process.env.NODE_ENV = 'test';
 
 			const Sentry = require('@sentry/node');
-			const { attachErrorHandlers } = require('../index');
-			attachErrorHandlers();
+			const index = require('../index');
+			index.startBot(); // ← This initializes `client`
+			const client = index.client;
+
+			index.attachErrorHandlers();
+			client.logger = mockLogger;
 
 			const rejectionError = new Error('Test rejection');
 			process.listeners('unhandledRejection').forEach((listener) =>
@@ -51,16 +72,20 @@ describe('Sentry Integration Tests', () => {
 		});
 	});
 
-	test('captures uncaught exceptions', async () => {
-		const exceptionError = new Error('Test exception');
-
+	test('captures uncaught exceptions', () => {
 		jest.isolateModules(() => {
+			// Mocks moved to top of file
+
 			process.env.SENTRY_DSN = 'https://fake@dsn/123';
 			process.env.NODE_ENV = 'test';
 
 			const Sentry = require('@sentry/node');
-			const { attachErrorHandlers } = require('../index');
-			attachErrorHandlers();
+			const index = require('../index');
+			index.startBot(); // initialize client
+			const client = index.client;
+
+			index.attachErrorHandlers();
+			client.logger = mockLogger;
 
 			const exceptionError = new Error('Test exception');
 			process.listeners('uncaughtException').forEach((listener) =>
@@ -73,6 +98,8 @@ describe('Sentry Integration Tests', () => {
 
 	test('creates breadcrumb on command execution', () => {
 		jest.isolateModules(() => {
+			// Mocks moved to top of file
+
 			const Sentry = require('@sentry/node');
 			process.env.SENTRY_DSN = 'https://fake@dsn/123';
 			process.env.NODE_ENV = 'test';

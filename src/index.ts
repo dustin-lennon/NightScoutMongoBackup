@@ -4,20 +4,40 @@ import { LogLevel, SapphireClient } from '@sapphire/framework';
 import 'dotenv/config';
 import '@sentry/tracing';
 
-Sentry.init({
-	dsn: process.env.SENTRY_DSN,
-	environment: process.env.NODE_ENV || 'development',
-	tracesSampleRate: 1.0
-});
+export let client: SapphireClient;
 
-export const client = new SapphireClient({
-	intents: [GatewayIntentBits.Guilds],
-	logger: { level: LogLevel.Info }
-});
+export function startBot(): { client: SapphireClient } {
+	Sentry.init({
+		dsn: process.env.SENTRY_DSN,
+		environment: process.env.NODE_ENV ?? 'development',
+		tracesSampleRate: 1.0
+	});
 
-client.once('ready', () => {
-	console.log(`✅ Bot is online as ${client.user?.tag}!`);
-});
+	client = new SapphireClient({
+		intents: [GatewayIntentBits.Guilds],
+		logger: { level: LogLevel.Info }
+	});
+
+	/* istanbul ignore next */
+	client.once('ready', () => {
+		console.log(`✅ Bot is online as ${client.user?.tag}!`);
+	});
+
+	/* istanbul ignore else */
+	if (process.env.NODE_ENV !== 'test') {
+		attachErrorHandlers();
+
+		/* istanbul ignore next */
+		client
+			.login(process.env.DISCORD_TOKEN)
+			.catch((error) => {
+				Sentry.captureException(error);
+				console.error('❌ Failed to login:', error);
+			});
+	}
+
+	return { client };
+}
 
 export function attachErrorHandlers(): void {
 	process.on('unhandledRejection', (reason) => {
@@ -31,13 +51,7 @@ export function attachErrorHandlers(): void {
 	});
 }
 
-// Attach automatically in production
+/* istanbul ignore next */
 if (!process.env.JEST_WORKER_ID && !process.env.SKIP_ERROR_HANDLERS) {
-	client
-		.login(process.env.DISCORD_TOKEN)
-		.then(() => attachErrorHandlers())
-		.catch((error) => {
-			Sentry.captureException(error);
-			console.error('❌ Failed to login:', error);
-		});
+	startBot();
 }
