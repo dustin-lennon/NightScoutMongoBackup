@@ -58,7 +58,7 @@ jobs:
           echo "Waiting for GitHub to start checks..."
           sleep 30
 
-          PR_NUMBER=$(gh pr list --head sync/main-to-develop --json number -jq '.[0].number')
+          PR_NUMBER=$(gh pr list --head sync/main-to-develop --json number --jq '.[0].number')
 
           if [ -z "$PR_NUMBER" ]; then
             echo "No PR found to auto-merge."
