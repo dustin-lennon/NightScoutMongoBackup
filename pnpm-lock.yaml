@@ -52,8 +52,8 @@ importers:
         specifier: ^9.10.0
         version: 9.10.0
       '@sentry/profiling-node':
-        specifier: ^9.9.0
-        version: 9.9.0
+        specifier: ^9.10.0
+        version: 9.10.0
       '@sentry/tracing':
         specifier: ^7.120.3
         version: 7.120.3
@@ -985,8 +985,8 @@ packages:
       '@opentelemetry/sdk-trace-base': ^1.30.1
       '@opentelemetry/semantic-conventions': ^1.28.0
 
-  '@sentry/profiling-node@9.9.0':
-    resolution: {integrity: sha512-Uy7Y4ShWuV623BWJDoqM7C/6Z1blmghnjL7MF+sQ6M67DgygZ08SbvkwydYF8W7H4Dd/8Y3pnZp2dh5zgN5O8Q==}
+  '@sentry/profiling-node@9.10.0':
+    resolution: {integrity: sha512-tVQF7Cj+Zv5d8+1NwV75LiXpsCai8ig+QwbBHXs6x7lZstvF1+BplqurRmxqVe8qoOLvik4zYzkLIBgSWCnxTg==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -4454,11 +4454,11 @@ snapshots:
       '@opentelemetry/semantic-conventions': 1.30.0
       '@sentry/core': 9.9.0
 
-  '@sentry/profiling-node@9.9.0':
+  '@sentry/profiling-node@9.10.0':
     dependencies:
       '@sentry-internal/node-cpu-profiler': 2.1.0
-      '@sentry/core': 9.9.0
-      '@sentry/node': 9.9.0
+      '@sentry/core': 9.10.0
+      '@sentry/node': 9.10.0
     transitivePeerDependencies:
       - supports-color
 
