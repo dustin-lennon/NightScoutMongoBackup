@@ -36,7 +36,7 @@
     "@sapphire/type": "^2.6.0",
     "@sapphire/utilities": "^3.18.2",
     "@sentry/node": "^9.9.0",
-    "@sentry/profiling-node": "^9.9.0",
+    "@sentry/profiling-node": "^9.10.0",
     "@sentry/tracing": "^7.120.3",
     "@skyra/env-utilities": "^2.0.0",
     "discord.js": "^14.18.0",
