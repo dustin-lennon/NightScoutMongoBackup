@@ -15,7 +15,7 @@ jobs:
       - name: Fetch SonarQube issues
         run: |
           curl -s -u "${{ secrets.SONAR_TOKEN }}:" \
-            "https://sonarcloud.io//api/issues/search?componentKeys=dustin-lennon_NightScoutMongoBackup&resolved=false" \
+            "https://sonarcloud.io/api/issues/search?componentKeys=dustin-lennon_NightScoutMongoBackup&resolved=false" \
             -o sonar-issues.json
 
       - name: Create GitHub issues
