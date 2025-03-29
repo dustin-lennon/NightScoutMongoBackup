@@ -4,7 +4,7 @@ import { LogLevel, SapphireClient } from '@sapphire/framework';
 import 'dotenv/config';
 import '@sentry/tracing';
 
-export let client: SapphireClient;
+let internalClient: SapphireClient;
 
 export function startBot(): { client: SapphireClient } {
 	Sentry.init({
@@ -13,14 +13,14 @@ export function startBot(): { client: SapphireClient } {
 		tracesSampleRate: 1.0
 	});
 
-	client = new SapphireClient({
+	internalClient = new SapphireClient({
 		intents: [GatewayIntentBits.Guilds],
 		logger: { level: LogLevel.Info }
 	});
 
 	/* istanbul ignore next */
-	client.once('ready', () => {
-		console.log(`✅ Bot is online as ${client.user?.tag}!`);
+	internalClient.once('ready', () => {
+		console.log(`✅ Bot is online as ${internalClient.user?.tag}!`);
 	});
 
 	/* istanbul ignore else */
@@ -28,7 +28,7 @@ export function startBot(): { client: SapphireClient } {
 		attachErrorHandlers();
 
 		/* istanbul ignore next */
-		client
+		internalClient
 			.login(process.env.DISCORD_TOKEN)
 			.catch((error) => {
 				Sentry.captureException(error);
@@ -36,18 +36,18 @@ export function startBot(): { client: SapphireClient } {
 			});
 	}
 
-	return { client };
+	return { client: internalClient };
 }
 
 export function attachErrorHandlers(): void {
 	process.on('unhandledRejection', (reason) => {
 		Sentry.captureException(reason);
-		client.logger.error('Unhandled Rejection:', reason);
+		internalClient.logger.error('Unhandled Rejection:', reason);
 	});
 
 	process.on('uncaughtException', (error) => {
 		Sentry.captureException(error);
-		client.logger.error('Uncaught Exception:', error);
+		internalClient.logger.error('Uncaught Exception:', error);
 	});
 }
 

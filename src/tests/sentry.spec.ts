@@ -32,8 +32,7 @@ describe('Sentry Integration Tests', () => {
 			process.env.NODE_ENV = 'test';
 
 			const index = require('../index');
-			index.startBot();
-			const client = index.client;
+			const { client } = index.startBot();
 
 			index.attachErrorHandlers();
 			client.logger = mockLogger;
@@ -57,8 +56,7 @@ describe('Sentry Integration Tests', () => {
 
 			const Sentry = require('@sentry/node');
 			const index = require('../index');
-			index.startBot(); // ← This initializes `client`
-			const client = index.client;
+			const { client } = index.startBot();
 
 			index.attachErrorHandlers();
 			client.logger = mockLogger;
@@ -81,8 +79,7 @@ describe('Sentry Integration Tests', () => {
 
 			const Sentry = require('@sentry/node');
 			const index = require('../index');
-			index.startBot(); // initialize client
-			const client = index.client;
+			const { client } = index.startBot();
 
 			index.attachErrorHandlers();
 			client.logger = mockLogger;
