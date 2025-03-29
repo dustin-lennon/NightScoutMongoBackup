@@ -25,23 +25,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Check if PR already exists
-        id: check_pr
-        uses: actions/github-script@v7
-        with:
-          result-encoding: string
-          script: |
-            const { data: prs } = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              head: `${context.repo.owner}:sync/main-to-develop`,
-              base: 'develop',
-              state: 'open'
-            });
-            return prs.length > 0;
-
       - name: Create Pull Request
-        if: steps.check_pr.outputs.result == 'false'
+        id: cpr
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -51,16 +36,16 @@ jobs:
           branch: sync/main-to-develop
           delete-branch: true
           draft: false
+          branch-suffix: timestamp
 
       - name: Auto-merge PR if checks pass
-        if: steps.check_pr.outputs.result == 'false'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Waiting for checks to initialize..."
           sleep 30
 
-          PR_NUMBER=$(gh pr list --head sync/main-to-develop --json number --jq '.[0].number')
+          PR_NUMBER=$(gh pr list --head sync/main-to-develop --state open --json number --jq '.[0].number')
 
           if [ -z "$PR_NUMBER" ]; then
             echo "❌ No PR found to auto-merge."
