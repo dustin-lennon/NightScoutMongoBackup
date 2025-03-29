@@ -25,8 +25,16 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+      - name: Check for Changes
+        id: check_changes
+        run: |
+          git fetch origin develop
+          CHANGES=$(git rev-list --right-only --count origin/develop...origin/main)
+          echo "CHANGES=$CHANGES" >> $GITHUB_ENV
+
       - name: Create Pull Request
         id: cpr
+        if: env.CHANGES != '0'
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -37,14 +45,6 @@ jobs:
           delete-branch: true
           draft: false
           branch-suffix: timestamp
-
-      - name: Debug Create Pull Request
-        if: always()
-        run: |
-          echo "Create Pull Request Output:"
-          echo "${{ steps.cpr.outputs.pull-request-url }}"
-          echo "${{ steps.cpr.outputs.pull-request-number }}"
-          echo "${{ steps.cpr.outputs.pull-request-html-url }}"
 
       - name: Auto-merge PR if checks pass
         env:
