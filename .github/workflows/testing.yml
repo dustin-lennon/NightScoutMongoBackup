@@ -27,6 +27,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Debug token length
+        run: |
+          echo "DISCORD_TOKEN is set to ${DISCORD_TOKEN:0:4}... (length: ${#DISCORD_TOKEN})"
+        shell: bash
+        env:
+          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+
       - name: Run Tests
         env:
           DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}

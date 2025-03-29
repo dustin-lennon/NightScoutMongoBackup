@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch: # Allow manual trigger too
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -50,13 +50,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Waiting for GitHub to start checks..."
+          echo "Waiting for checks to initialize..."
           sleep 30
 
           PR_NUMBER=$(gh pr list --head sync/main-to-develop --state open --json number --jq '.[0].number')
 
           if [ -z "$PR_NUMBER" ]; then
-            echo "No PR found to auto-merge."
+            echo "❌ No PR found to auto-merge."
             exit 1
           fi
 
