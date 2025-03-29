@@ -25,40 +25,27 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Check if PR already exists
-        id: check_pr
-        uses: actions/github-script@v7
+      - name: Create Pull Request
+        id: cpr
+        uses: peter-evans/create-pull-request@v7
         with:
-          script: |
-            const prs = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              head: `${context.repo.owner}:sync/main-to-develop`,
-              base: 'develop',
-              state: 'open'
-            });
-            core.setOutput('exists', prs.data.length > 0);
-
-      - name: Create PR if needed
-        if : steps.check_pr.outputs.exists == 'false'
-        uses: peter-evans/create-pull-request@v5
-        with:
-            title: '🔄 Sync main to develop'
-            body: 'Automated back-merge from `main` to `develop`.'
-            base: develop
-            branch: sync/main-to-develop
-            delete-branch: true
-            token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          title: '🔄 Sync main to develop'
+          body: 'Automated back-merge from `main` to `develop`.'
+          base: develop
+          branch: sync/main-to-develop
+          delete-branch: true
+          draft: false
+          branch-suffix: timestamp
 
       - name: Auto-merge PR if checks pass
-        if: steps.check_pr.outputs.exists == 'false'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Waiting for GitHub to start checks..."
           sleep 30
 
-          PR_NUMBER=$(gh pr list --head sync/main-to-develop --json number --jq '.[0].number')
+          PR_NUMBER=$(gh pr list --head sync/main-to-develop --state open --json number --jq '.[0].number')
 
           if [ -z "$PR_NUMBER" ]; then
             echo "No PR found to auto-merge."
