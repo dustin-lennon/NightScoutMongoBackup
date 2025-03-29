@@ -38,6 +38,14 @@ jobs:
           draft: false
           branch-suffix: timestamp
 
+      - name: Debug Create Pull Request
+        if: always()
+        run: |
+          echo "Create Pull Request Output:"
+          echo "${{ steps.cpr.outputs.pull-request-url }}"
+          echo "${{ steps.cpr.outputs.pull-request-number }}"
+          echo "${{ steps.cpr.outputs.pull-request-html-url }}"
+
       - name: Auto-merge PR if checks pass
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
