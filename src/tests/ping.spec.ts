@@ -138,4 +138,38 @@ describe("PingCommand", () => {
 		expect(mockBuilder.setName).toHaveBeenCalledWith("ping");
 		expect(mockBuilder.setDescription).toHaveBeenCalledWith("Ping the bot to check if it's alive.");
 	});
+
+	it("creates a PingCommand instance with the correct properties", () => {
+		const mockContext = {
+			name: "ping",
+			path: __filename,
+			root: process.cwd(),
+			store: {
+				userDirectory: process.cwd(),
+				name: "commands",
+				container
+			},
+			location: {
+				full: __filename,
+				root: process.cwd(),
+				relative: "src/commands/general/ping.ts",
+				virtual: false,
+				directories: ["src", "commands", "general"],
+				name: "ping",
+				toJSON: () => ({})
+			}
+		};
+
+		const commandOptions = {
+			name: "ping",
+			description: "Ping the bot to check if it's alive.",
+		};
+
+		const command = new PingCommand(mockContext as any, commandOptions);
+
+		// Validate the properties
+		expect(command.name).toBe("ping");
+		expect(command.description).toBe("Ping the bot to check if it's alive.");
+	});
+
 });
