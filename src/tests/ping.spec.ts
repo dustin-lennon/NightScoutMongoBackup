@@ -172,4 +172,48 @@ describe("PingCommand", () => {
 		expect(command.description).toBe("Ping the bot to check if it's alive.");
 	});
 
+	it("directly validates constructor logic", () => {
+		// Mock minimal context
+		const mockContext = {
+			name: "ping",
+			path: __filename,
+			root: process.cwd(),
+			store: {
+				userDirectory: process.cwd(),
+				name: "commands",
+				container: {},
+			},
+			location: {
+				full: __filename,
+				root: process.cwd(),
+				relative: "src/commands/general/ping.ts",
+				virtual: false,
+				directories: ["src", "commands", "general"],
+				name: "ping",
+				toJSON: () => ({}),
+			},
+		} as Command.LoaderContext;
+
+		const commandOptions = {
+			name: "ping",
+			description: "Ping the bot to check if it's alive.",
+		};
+
+		// Spy on the constructor logic (forces explicit tracking)
+		const constructorSpy = jest.fn();
+		const CustomPingCommand = class extends PingCommand {
+			public constructor(context: Command.LoaderContext, options: Command.Options) {
+				constructorSpy();
+				super(context, options);
+			}
+		};
+
+		const command = new CustomPingCommand(mockContext, commandOptions);
+
+		// Assertions
+		expect(constructorSpy).toHaveBeenCalledTimes(1);
+		expect(command.name).toBe("ping");
+		expect(command.description).toBe("Ping the bot to check if it's alive.");
+	});
+
 });
