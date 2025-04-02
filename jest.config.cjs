@@ -11,5 +11,11 @@ module.exports = {
     "ansi-regex": require.resolve("ansi-regex")
   },
   extensionsToTreatAsEsm: [".ts"],
-  testMatch: ["**/src/tests/**/*.test.ts", "**/src/tests/**/*.spec.ts"]
+  testMatch: ["**/src/tests/**/*.test.ts", "**/src/tests/**/*.spec.ts"],
+  modulePathIgnorePatterns: ['<rootDir>/dist/'],
+  transformIgnorePatterns: ['<rootDir>/dist/', '/node_modules/'],
+  collectCoverageFrom: [
+    "**/src/**/*.{ts,tsx}", // Only include files in the src directory
+    "!**/dist/**"           // Explicitly exclude the dist directory
+  ],
 };
