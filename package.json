@@ -74,7 +74,7 @@
     "ts-jest": "^29.3.0",
     "tsc-watch": "^6.2.1",
     "typescript": "^5.8.2",
-    "typescript-eslint": "^8.28.0"
+    "typescript-eslint": "^8.29.0"
   },
   "prettier": "@sapphire/prettier-config",
   "resolutions": {
