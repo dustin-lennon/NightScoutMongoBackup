@@ -3,13 +3,19 @@ module.exports = {
   preset: "ts-jest",
   testEnvironment: "node",
   transform: {
-    "^.+\\.(t|j)sx?$": "ts-jest"
+    "^.+\\.tsx?$": "ts-jest"
   },
-  moduleNameMapper: {
-    "^@sentry/node$": "<rootDir>/src/tests/__mocks__/@sentry/node.ts",
-    "^(\\.{1,2}/.*)\\.js$": "$1",
-    "ansi-regex": require.resolve("ansi-regex")
-  },
-  extensionsToTreatAsEsm: [".ts"],
-  testMatch: ["**/src/tests/**/*.test.ts", "**/src/tests/**/*.spec.ts"]
+  collectCoverage: true,
+  collectCoverageFrom: [
+    "src/**/*.{ts,tsx}", // Only include source files
+    "!**/dist/**",       // Exclude the dist directory
+    "!**/node_modules/**"
+  ],
+  coverageReporters: ["text", "lcov"], // Include lcov for IDE integration
+  coveragePathIgnorePatterns: [
+    "/node_modules/",
+    "<rootDir>/dist/"
+  ],
+  modulePathIgnorePatterns: ["<rootDir>/dist/"],
+  coverageProvider: "v8",
 };
