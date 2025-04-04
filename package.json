@@ -104,6 +104,9 @@
       "@sapphire/type",
       "@sentry-internal/node-cpu-profiler",
       "aws-sdk"
+    ],
+    "ignoredBuiltDependencies": [
+      "@sentry/cli"
     ]
   },
   "imports": {
