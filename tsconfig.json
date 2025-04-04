@@ -1,19 +1,28 @@
 {
 	"extends": ["@sapphire/ts-config", "@sapphire/ts-config/extra-strict", "@sapphire/ts-config/decorators"],
 	"compilerOptions": {
-		"rootDir": "src",
-		"outDir": "dist",
-		"baseUrl": "src",
-		"tsBuildInfoFile": "dist/.tsbuildinfo",
-		"paths": {
+        "rootDir": "src",
+        "outDir": "dist",
+        "baseUrl": "src",
+        "tsBuildInfoFile": "dist/.tsbuildinfo",
+
+        "paths": {
 			"#lib/*": ["./lib/*"]
 		},
-		"moduleResolution": "Node16",
-		"esModuleInterop": true,
-		"skipLibCheck": true,
-		"forceConsistentCasingInFileNames": true,
-		"isolatedModules": true
-	},
+
+        "moduleResolution": "Node16",
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "isolatedModules": true,
+        "sourceMap": true,
+        "inlineSources": true,
+
+        // Set `sourceRoot` to  "/" to strip the build path prefix
+        // from generated source code references.
+        // This improves issue grouping in Sentry.
+        "sourceRoot": "/"
+    },
 	"include": ["src/**/*"],
 	"exclude": ["node_modules", "dist"]
 }
