@@ -7,7 +7,7 @@
   "scripts": {
     "sapphire": "sapphire",
     "generate": "sapphire generate",
-    "build": "tsc",
+    "build": "tsc && pnpm sentry:sourcemaps",
     "watch": "tsc --watch",
     "start": "node dist/index.js",
     "dev": "pnpm build && node dist/index.js",
@@ -18,7 +18,8 @@
     "cz": "git-cz",
     "test": "cross-env NODE_ENV=test ENABLE_TEST_ERROR_HANDLERS=true jest --clearCache && jest",
     "prepare": "husky || trust",
-    "coverage": "jest --coverage"
+    "coverage": "jest --coverage",
+    "sentry:sourcemaps": "sentry-cli sourcemaps inject --org stelth2000-inc --project nightscoutmongobackup ./dist && sentry-cli sourcemaps upload --org stelth2000-inc --project nightscoutmongobackup ./dist"
   },
   "author": "@dustin-lennon",
   "license": "MIT",
@@ -36,12 +37,14 @@
     "@sapphire/time-utilities": "^1.7.14",
     "@sapphire/type": "^2.6.0",
     "@sapphire/utilities": "^3.18.2",
-    "@sentry/profiling-node": "^9.10.1",
+    "@sentry/cli": "^2.43.0",
     "@sentry/node": "^9.10.1",
+    "@sentry/profiling-node": "^9.10.1",
     "@sentry/tracing": "^7.120.3",
     "@skyra/env-utilities": "^2.0.0",
     "discord.js": "^14.18.0",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "mongodb": "^6.15.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.8.0",
@@ -95,12 +98,16 @@
   "lint-staged": {
     "*": "prettier --ignore-unknown --write"
   },
-  "packageManager": "pnpm@10.7.0",
+  "packageManager": "pnpm@10.7.1",
   "pnpm": {
     "onlyBuiltDependencies": [
       "@sapphire/type",
       "@sentry-internal/node-cpu-profiler",
       "aws-sdk"
     ]
+  },
+  "imports": {
+    "#lib/*": "./dist/lib/*.js",
+    "#utils/*": "./dist/lib/utils/*.js"
   }
 }
