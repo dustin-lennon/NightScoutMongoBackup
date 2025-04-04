@@ -17,3 +17,6 @@ dist
 
 # Ignore Husky internal files
 .husky/_
+
+# Sentry Config File
+.sentryclirc
