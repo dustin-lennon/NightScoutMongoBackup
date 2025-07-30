@@ -43,4 +43,4 @@ export class MongoService {
 	}
 }
 
-export const mongoService = new MongoService();
+export const mongoService = process.env.NODE_ENV === 'test' ? {} as MongoService : new MongoService();
