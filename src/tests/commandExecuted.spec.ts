@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/node';
-import { CommandExecutedListener } from '../events/commandExecuted';
+import { CommandExecutedListener } from '#events/commandExecuted';
 import { container, PreconditionContainerArray, Command } from '@sapphire/framework';
 import { mockLogger } from './__mocks__/mockLogger';
 
