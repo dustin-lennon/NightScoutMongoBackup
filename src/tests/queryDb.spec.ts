@@ -1,12 +1,21 @@
 import { UserCommand } from "#commands/general/queryDb";
 import { CommandInteraction, IntentsBitField } from "discord.js";
 import { mockDeep } from "jest-mock-extended";
-import { mongoService } from "#lib/services/mongo";
 import { parseValidatedDate } from "#lib/util/date";
 import { BucketScope, container, SapphireClient, LogLevel } from "@sapphire/framework";
 
-jest.mock('#lib/services/mongo');
+// Mock the MongoDB service before importing anything that uses it
+jest.mock('#lib/services/mongo', () => ({
+	mongoService: {
+		getCollection: jest.fn(),
+		close: jest.fn()
+	}
+}));
+
 jest.mock('#lib/util/date');
+
+// Import the mocked service after the mock
+import { mongoService } from "#lib/services/mongo";
 
 // Mock the RequiresClientPermissions decorator
 jest.mock('@sapphire/decorators', () => {
