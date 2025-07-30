@@ -1,16 +1,20 @@
+import '#lib/setup';
+
 import * as Sentry from '@sentry/node';
+import { envParseString } from '@skyra/env-utilities';
 import { GatewayIntentBits } from 'discord.js';
 import { LogLevel, SapphireClient } from '@sapphire/framework';
 import 'dotenv/config';
 import '@sentry/tracing';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
+import { NightlyBackupTask } from '#scheduled-tasks/nightlyBackup';
 
 let internalClient: SapphireClient;
 
 export function startBot(): { client: SapphireClient } {
 	Sentry.init({
-		dsn: process.env.SENTRY_DSN,
-		environment: process.env.NODE_ENV ?? 'development',
+		dsn: envParseString('SENTRY_DSN'),
+		environment: envParseString('NODE_ENV', 'development'),
 		tracesSampleRate: 1.0,
 		profilesSampleRate: 1.0,
 		integrations: [
@@ -29,15 +33,21 @@ export function startBot(): { client: SapphireClient } {
 	/* istanbul ignore next */
 	internalClient.once('ready', () => {
 		console.log(`✅ Bot is online as ${internalClient.user?.tag}!`);
+
+		// Start nightly backup task when bot is ready
+		if (envParseString('NODE_ENV', 'development') !== 'test') {
+			const nightlyBackupTask = new NightlyBackupTask();
+			nightlyBackupTask.start();
+		}
 	});
 
 	/* istanbul ignore else */
-	if (process.env.NODE_ENV !== 'test') {
+	if (envParseString('NODE_ENV', 'development') !== 'test') {
 		attachErrorHandlers();
 
 		/* istanbul ignore next */
 		internalClient
-			.login(process.env.DISCORD_TOKEN)
+			.login(envParseString('DISCORD_TOKEN'))
 			.catch((error) => {
 				Sentry.captureException(error);
 				console.error('❌ Failed to login:', error);
@@ -60,6 +70,6 @@ export function attachErrorHandlers(): void {
 }
 
 /* istanbul ignore next */
-if (!process.env.JEST_WORKER_ID && !process.env.SKIP_ERROR_HANDLERS) {
+if (!envParseString('JEST_WORKER_ID', '') && !envParseString('SKIP_ERROR_HANDLERS', '')) {
 	startBot();
 }

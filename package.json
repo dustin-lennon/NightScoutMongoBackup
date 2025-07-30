@@ -109,7 +109,8 @@
     "onlyBuiltDependencies": [
       "@sapphire/type",
       "@sentry-internal/node-cpu-profiler",
-      "aws-sdk"
+      "aws-sdk",
+      "unrs-resolver"
     ],
     "ignoredBuiltDependencies": [
       "@sentry/cli"

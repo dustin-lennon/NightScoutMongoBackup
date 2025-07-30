@@ -1,6 +1,6 @@
-import { CommandInteraction, IntentsBitField, SlashCommandBuilder } from 'discord.js';
-import { container, BucketScope, SapphireClient, LogLevel } from '@sapphire/framework';
-import { PingCommand } from '../commands/general/ping';
+import { CommandInteraction, IntentsBitField } from 'discord.js';
+import { container, BucketScope, SapphireClient, LogLevel, Command } from '@sapphire/framework';
+import { PingCommand } from '#commands/general/ping';
 
 describe("PingCommand", () => {
 	// Initialize and mock the Sapphire client
@@ -192,7 +192,7 @@ describe("PingCommand", () => {
 				name: "ping",
 				toJSON: () => ({}),
 			},
-		} as Command.LoaderContext;
+		} as unknown as Command.LoaderContext;
 
 		const commandOptions = {
 			name: "ping",
