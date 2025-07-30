@@ -1,12 +1,14 @@
 import { UserListener } from "#listeners/commands/chatInputCommands/chatInputCommandSuccess";
 import { container, SapphireClient, LogLevel } from "@sapphire/framework";
 import { IntentsBitField } from "discord.js";
-import { logSuccessCommand } from "#lib/utils";
 
 // Mock the utils module
-jest.mock('#lib/utils', () => ({
+jest.mock('../lib/utils', () => ({
 	logSuccessCommand: jest.fn()
 }));
+
+// Import after mocking
+import { logSuccessCommand } from "../lib/utils";
 
 describe('ChatInputCommandSuccess Listener', () => {
 	let listener: UserListener;
