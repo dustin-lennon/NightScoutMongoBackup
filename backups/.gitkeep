@@ -1,0 +1,2 @@
+# This file keeps the backups directory in version control
+# The actual backup files are ignored by .gitignore

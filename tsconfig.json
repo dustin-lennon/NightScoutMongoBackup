@@ -7,7 +7,14 @@
         "tsBuildInfoFile": "dist/.tsbuildinfo",
 
         "paths": {
-			"#lib/*": ["./lib/*"]
+			"#lib/*": ["./lib/*"],
+			"#listeners/*": ["./listeners/*"],
+			"#commands/*": ["./commands/*"],
+			"#events/*": ["./events/*"],
+			"#preconditions/*": ["./preconditions/*"],
+			"#tests/*": ["./tests/*"],
+			"#root/*": ["./*"],
+			"#scheduled-tasks/*": ["./scheduled-tasks/*"]
 		},
 
         "moduleResolution": "Node16",

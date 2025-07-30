@@ -5,11 +5,22 @@ module.exports = {
   transform: {
     "^.+\\.tsx?$": "ts-jest"
   },
+  moduleNameMapper: {
+    "^#lib/(.*)$": "<rootDir>/src/lib/$1",
+    "^#listeners/(.*)$": "<rootDir>/src/listeners/$1",
+    "^#commands/(.*)$": "<rootDir>/src/commands/$1",
+    "^#events/(.*)$": "<rootDir>/src/events/$1",
+    "^#preconditions/(.*)$": "<rootDir>/src/preconditions/$1",
+    "^#tests/(.*)$": "<rootDir>/src/tests/$1",
+    "^#root/(.*)$": "<rootDir>/src/$1",
+    "^#scheduled-tasks/(.*)$": "<rootDir>/src/scheduled-tasks/$1"
+  },
   collectCoverage: true,
   collectCoverageFrom: [
     "src/**/*.{ts,tsx}", // Only include source files
     "!**/dist/**",       // Exclude the dist directory
-    "!**/node_modules/**"
+    "!**/node_modules/**",
+    "!src/commands/admin/**" // Exclude Discord command files (UI layer - business logic tested in services)
   ],
   coverageReporters: ["text", "lcov"], // Include lcov for IDE integration
   coveragePathIgnorePatterns: [

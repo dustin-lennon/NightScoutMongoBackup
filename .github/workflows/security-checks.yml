@@ -37,6 +37,10 @@ jobs:
       - name: Run code coverage
         env:
           DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+          MONGO_USERNAME: test_user
+          MONGO_PASSWORD: test_password
+          MONGO_HOST: test_host
+          NODE_ENV: test
         run: pnpm run coverage
 
       - name: Run SonarQube Scanner
