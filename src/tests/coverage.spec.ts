@@ -18,7 +18,7 @@ jest.mock('discord.js', () => {
 });
 
 import { mockLogger } from './__mocks__/mockLogger';
-import { attachErrorHandlers, startBot } from '../index';
+import { attachErrorHandlers, startBot } from '#root/index';
 import { SapphireClient } from '@sapphire/framework';
 
 describe('Coverage Utility', () => {
