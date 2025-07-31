@@ -10,8 +10,6 @@ updates:
     versioning-strategy: "increase"
     assignees:
       - "dustin-lennon"
-    reviewers:
-      - "dustin-lennon"
     labels:
       - "dependencies"
       - "pnpm"
@@ -36,8 +34,6 @@ updates:
     open-pull-requests-limit: 3
     assignees:
       - "dustin-lennon"
-    reviewers:
-      - "dustin-lennon"
     labels:
       - "dependencies"
       - "github-actions"
@@ -51,8 +47,6 @@ updates:
       time: "06:00"
     open-pull-requests-limit: 3
     assignees:
-      - "dustin-lennon"
-    reviewers:
       - "dustin-lennon"
     labels:
       - "dependencies"
