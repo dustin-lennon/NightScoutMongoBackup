@@ -24,7 +24,7 @@
   "author": "@dustin-lennon",
   "license": "MIT",
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.856.0",
+    "@aws-sdk/client-s3": "^3.857.0",
     "@sapphire/cron": "^1.2.1",
     "@sapphire/decorators": "^6.2.0",
     "@sapphire/discord-utilities": "^3.5.0",
