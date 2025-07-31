@@ -41,7 +41,10 @@ jobs:
           MONGO_PASSWORD: test_password
           MONGO_HOST: test_host
           NODE_ENV: test
-        run: pnpm run coverage
+          ENABLE_TEST_ERROR_HANDLERS: true
+        run: |
+          npx jest --clearCache
+          npx jest --coverage
 
       - name: Run SonarQube Scanner
         uses: SonarSource/sonarqube-scan-action@v5
@@ -72,6 +75,19 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
