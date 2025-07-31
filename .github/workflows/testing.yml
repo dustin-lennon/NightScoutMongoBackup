@@ -35,4 +35,11 @@ jobs:
         shell: bash
 
       - name: Run Tests
+        env:
+          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+          MONGO_USERNAME: test_user
+          MONGO_PASSWORD: test_password
+          MONGO_HOST: test_host
+          NODE_ENV: test
+          ENABLE_TEST_ERROR_HANDLERS: true
         run: pnpm run test
