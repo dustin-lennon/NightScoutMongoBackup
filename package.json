@@ -18,7 +18,7 @@
     "cz": "git-cz",
     "test": "cross-env NODE_ENV=test ENABLE_TEST_ERROR_HANDLERS=true jest --clearCache && jest",
     "prepare": "husky || trust",
-    "coverage": "jest --coverage",
+    "coverage": "cross-env NODE_ENV=test ENABLE_TEST_ERROR_HANDLERS=true jest --clearCache && jest --coverage",
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org stelth2000-inc --project nightscoutmongobackup ./dist && sentry-cli sourcemaps upload --org stelth2000-inc --project nightscoutmongobackup ./dist"
   },
   "author": "@dustin-lennon",
