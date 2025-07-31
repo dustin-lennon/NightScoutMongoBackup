@@ -5,6 +5,7 @@ module.exports = {
   transform: {
     "^.+\\.tsx?$": "ts-jest"
   },
+  moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json"],
   moduleNameMapper: {
     "^#lib/(.*)$": "<rootDir>/src/lib/$1",
     "^#listeners/(.*)$": "<rootDir>/src/listeners/$1",
