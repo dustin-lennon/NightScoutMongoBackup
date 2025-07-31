@@ -13,7 +13,7 @@ module.exports = {
     "^#preconditions/(.*)$": "<rootDir>/src/preconditions/$1",
     "^#tests/(.*)$": "<rootDir>/src/tests/$1",
     "^#root/(.*)$": "<rootDir>/src/$1",
-    "^#scheduled-tasks/(.*)$": "<rootDir>/src/scheduled-tasks/$1"
+    "^#scheduled\\-tasks/(.*)$": "<rootDir>/src/scheduled-tasks/$1"
   },
   collectCoverage: true,
   collectCoverageFrom: [
