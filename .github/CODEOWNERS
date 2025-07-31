@@ -1,0 +1,20 @@
+# Global code ownership - all files require review from dustin-lennon
+* @dustin-lennon
+
+# Specific ownership for critical configuration files
+/.github/ @dustin-lennon
+/package.json @dustin-lennon
+/jest.config.cjs @dustin-lennon
+/tsconfig.json @dustin-lennon
+/eslint.config.cjs @dustin-lennon
+
+# Source code ownership
+/src/ @dustin-lennon
+
+# Documentation
+/docs/ @dustin-lennon
+/README.md @dustin-lennon
+
+# Deployment and infrastructure
+/deployment/ @dustin-lennon
+/scripts/ @dustin-lennon
