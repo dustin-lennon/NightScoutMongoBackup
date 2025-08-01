@@ -1,53 +1,20 @@
 import { mongoService } from '#lib/services/mongo';
 import { discordThreadService } from '#lib/services/discordThread';
-import { Document } from 'mongodb';
 import { container } from '@sapphire/framework';
+import {
+	BaseBackupService,
+	BackupOptions,
+	BackupResult,
+	BackupEventData
+} from '#lib/services/backup-base';
 
-export interface BackupOptions {
-	collections?: string[];
-	createThread?: boolean;
-	isManual?: boolean;
-}
+export class BackupService extends BaseBackupService {
 
-export interface BackupResult {
-	success: boolean;
-	collectionsProcessed: string[];
-	totalDocumentsProcessed: number;
-	data?: Record<string, Document[]>;
-	error?: string;
-	timestamp: Date;
-	threadId?: string;
-}
-
-export interface BackupStats {
-	timestamp: Date;
-	collectionsProcessed: string[];
-	totalDocumentsProcessed: number;
-	success: boolean;
-}
-
-export interface BackupEventData {
-	timestamp: Date;
-	success: boolean;
-	collections: string[];
-	totalDocuments: number;
-}
-
-export class BackupService {
-	private readonly defaultCollections = ['entries', 'devicestatus', 'treatments', 'profile'];
-	private backupHistory: BackupStats[] = [];
-
-	async performBackup(options: BackupOptions = {}): Promise<BackupResult> {
+	override async performBackup(options: BackupOptions = {}): Promise<BackupResult> {
 		const startTime = new Date();
-		const backupId = startTime.toISOString().slice(0, 19).replace(/[T:]/g, '-');
+		const backupId = this.generateBackupId();
 
-		const result: BackupResult = {
-			success: false,
-			collectionsProcessed: [],
-			totalDocumentsProcessed: 0,
-			timestamp: startTime,
-			data: {}
-		};
+		const result: BackupResult = this.createInitialResult(startTime);
 
 		let threadId: string | undefined;
 
@@ -121,17 +88,12 @@ export class BackupService {
 				}
 
 				// Add to history for tracking
-				this.backupHistory.push({
+				this.addToHistory({
 					timestamp: result.timestamp,
 					collectionsProcessed: [...result.collectionsProcessed],
 					totalDocumentsProcessed: result.totalDocumentsProcessed,
 					success: true
 				});
-
-				// Keep only last 10 backup records
-				if (this.backupHistory.length > 10) {
-					this.backupHistory = this.backupHistory.slice(-10);
-				}
 
 				// Emit backup completed event
 				container.client.emit('backupCompleted', {
@@ -160,7 +122,7 @@ export class BackupService {
 				await discordThreadService.sendBackupErrorMessage(threadId, result.error);
 			}
 
-			this.backupHistory.push({
+			this.addToHistory({
 				timestamp: new Date(),
 				collectionsProcessed: [...result.collectionsProcessed],
 				totalDocumentsProcessed: result.totalDocumentsProcessed,
@@ -169,10 +131,6 @@ export class BackupService {
 		}
 
 		return result;
-	}
-
-	getBackupHistory(): BackupStats[] {
-		return [...this.backupHistory];
 	}
 }
 
