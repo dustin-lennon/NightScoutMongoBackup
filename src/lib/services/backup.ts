@@ -112,19 +112,21 @@ export class BackupService {
 			try {
 				const { stdout, stderr } = await this.execAsync(mongodumpCmd);
 
-				// Parse mongodump output to get document counts
-				const dumpOutput = stdout + stderr;
-				result.collectionsProcessed = collectionsToBackup;
+			// Parse mongodump output to get document counts
+			const dumpOutput = stdout + stderr;
+			result.collectionsProcessed = collectionsToBackup;
 
-				// Extract document count from mongodump output (approximate)
-				const documentMatches = dumpOutput.match(/(\d+) document/g);
-				if (documentMatches) {
-					result.totalDocumentsProcessed = documentMatches
-						.map(match => parseInt(match.match(/(\d+)/)?.[1] || '0'))
-						.reduce((sum, count) => sum + count, 0);
-				}
-
-			} catch (mongodumpError) {
+			// Extract document count from mongodump output (approximate)
+			// Use a more secure regex pattern to avoid backtracking vulnerabilities
+			const documentMatches = dumpOutput.match(/(\d{1,10}) document/g);
+			if (documentMatches) {
+				result.totalDocumentsProcessed = documentMatches
+					.map(match => {
+						const numStr = match.replace(' document', '');
+						return parseInt(numStr) || 0;
+					})
+					.reduce((sum, count) => sum + count, 0);
+			}			} catch (mongodumpError) {
 				throw new Error(`MongoDB dump failed: ${mongodumpError instanceof Error ? mongodumpError.message : 'Unknown error'}`);
 			}
 
