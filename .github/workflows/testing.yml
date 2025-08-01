@@ -37,6 +37,7 @@ jobs:
       - name: Run Tests
         env:
           DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           MONGO_USERNAME: test_user
           MONGO_PASSWORD: test_password
           MONGO_HOST: test_host
