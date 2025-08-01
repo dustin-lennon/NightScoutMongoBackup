@@ -1,4 +1,3 @@
-
 // Mock the container before other imports to prevent filesystem scanning issues
 jest.mock('@sapphire/framework', () => ({
 	container: {
