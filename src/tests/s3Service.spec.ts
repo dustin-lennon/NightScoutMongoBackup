@@ -1,7 +1,20 @@
+// Mock the container before other imports to prevent filesystem scanning issues
+jest.mock('@sapphire/framework', () => ({
+	container: {
+		logger: {
+			error: jest.fn(),
+			info: jest.fn(),
+			warn: jest.fn(),
+			debug: jest.fn()
+		}
+	}
+}));
+
 import { S3Service } from '../lib/services/s3';
 import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { createReadStream } from 'fs';
 import * as fsPromises from 'fs/promises';
+import { container } from '@sapphire/framework';
 
 // Mock AWS SDK
 jest.mock('@aws-sdk/client-s3', () => ({
@@ -274,17 +287,14 @@ describe('S3Service', () => {
 
 		it('should handle delete errors gracefully', async () => {
 			const key = 'backups/2023-12-01/test.json';
-			const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
 			mockS3ClientInstance.send.mockRejectedValueOnce(new Error('Delete failed'));
 
 			await s3Service.deleteObject(key);
 
-			expect(consoleErrorSpy).toHaveBeenCalledWith(
+			expect(container.logger.error).toHaveBeenCalledWith(
 				`Failed to delete S3 object ${key}:`,
 				expect.any(Error)
 			);
-
-			consoleErrorSpy.mockRestore();
 		});
 	});
 

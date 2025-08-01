@@ -3,6 +3,7 @@ import { envParseString } from '@skyra/env-utilities';
 import { createReadStream } from 'fs';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { container } from '@sapphire/framework';
 
 export interface S3UploadResult {
 	success: boolean;
@@ -113,7 +114,7 @@ export class S3Service {
 			});
 			await this.s3Client.send(command);
 		} catch (error) {
-			console.error(`Failed to delete S3 object ${key}:`, error);
+			container.logger.error(`Failed to delete S3 object ${key}:`, error);
 		}
 	}
 

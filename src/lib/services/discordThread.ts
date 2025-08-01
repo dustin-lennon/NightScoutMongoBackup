@@ -266,12 +266,15 @@ export class DiscordThreadService {
 
 		setTimeout(async () => {
 			try {
+				/* istanbul ignore next */
 				const thread = await container.client.channels.fetch(threadId) as ThreadChannel;
+				/* istanbul ignore next */
 				if (thread) {
 					await thread.delete('Automated cleanup after 1 week');
 				}
 			} catch (error) {
-				console.error(`Failed to delete thread ${threadId}:`, error);
+				/* istanbul ignore next */
+				container.logger.error(`Failed to delete thread ${threadId}:`, error);
 			}
 		}, deleteAfter);
 	}

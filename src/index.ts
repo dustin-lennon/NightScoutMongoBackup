@@ -31,14 +31,12 @@ export function startBot(): { client: SapphireClient } {
 	});
 
 	/* istanbul ignore next */
-	internalClient.once('ready', () => {
-		console.log(`✅ Bot is online as ${internalClient.user?.tag}!`);
+	internalClient.once('ready', (client) => {
+		client.logger.info(`✅ Bot is online as ${client.user?.tag}!`);
 
-		// Start nightly backup task when bot is ready
-		if (envParseString('NODE_ENV', 'development') !== 'test') {
-			const nightlyBackupTask = new NightlyBackupTask();
-			nightlyBackupTask.start();
-		}
+		// Start the nightly backup task
+		const nightlyBackupTask = new NightlyBackupTask();
+		nightlyBackupTask.start();
 	});
 
 	/* istanbul ignore else */
@@ -50,7 +48,7 @@ export function startBot(): { client: SapphireClient } {
 			.login(envParseString('DISCORD_TOKEN'))
 			.catch((error) => {
 				Sentry.captureException(error);
-				console.error('❌ Failed to login:', error);
+				internalClient.logger.error('❌ Failed to login:', error);
 			});
 	}
 
