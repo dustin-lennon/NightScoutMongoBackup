@@ -2,10 +2,23 @@ import { FileService } from '#lib/services/file';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { Document } from 'mongodb';
+import { container } from '@sapphire/framework';
 
 // Mock dependencies
 jest.mock('fs/promises');
 jest.mock('path');
+
+// Mock the container
+jest.mock('@sapphire/framework', () => ({
+	container: {
+		logger: {
+			error: jest.fn(),
+			info: jest.fn(),
+			warn: jest.fn(),
+			debug: jest.fn()
+		}
+	}
+}));
 
 const mockAccess = fs.access as jest.MockedFunction<typeof fs.access>;
 const mockMkdir = fs.mkdir as jest.MockedFunction<typeof fs.mkdir>;
@@ -190,7 +203,7 @@ describe('FileService', () => {
 			await fileService.deleteFile('/path/to/file.json');
 
 			expect(mockUnlink).toHaveBeenCalledWith('/path/to/file.json');
-			expect(consoleSpy).toHaveBeenCalledWith(
+			expect(container.logger.error).toHaveBeenCalledWith(
 				'Failed to delete file /path/to/file.json:',
 				expect.any(Error)
 			);
@@ -213,7 +226,7 @@ describe('FileService', () => {
 			await fileService.deleteDirectory('/path/to/directory');
 
 			expect(mockRm).toHaveBeenCalledWith('/path/to/directory', { recursive: true, force: true });
-			expect(consoleSpy).toHaveBeenCalledWith(
+			expect(container.logger.error).toHaveBeenCalledWith(
 				'Failed to delete directory /path/to/directory:',
 				expect.any(Error)
 			);

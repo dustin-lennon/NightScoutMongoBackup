@@ -1,6 +1,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { Document } from 'mongodb';
+import { container } from '@sapphire/framework';
 
 export interface FileOperationResult {
 	success: boolean;
@@ -60,7 +61,7 @@ export class FileService {
 			await fs.unlink(filePath);
 		} catch (error) {
 			// Ignore errors when cleaning up
-			console.error(`Failed to delete file ${filePath}:`, error);
+			container.logger.error(`Failed to delete file ${filePath}:`, error);
 		}
 	}
 
@@ -69,7 +70,7 @@ export class FileService {
 			await fs.rm(dirPath, { recursive: true, force: true });
 		} catch (error) {
 			// Ignore errors when cleaning up
-			console.error(`Failed to delete directory ${dirPath}:`, error);
+			container.logger.error(`Failed to delete directory ${dirPath}:`, error);
 		}
 	}
 
