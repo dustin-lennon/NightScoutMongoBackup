@@ -1,4 +1,6 @@
 name: Run Lint Code Check
+permissions:
+  contents: read
 
 on:
   workflow_dispatch:
