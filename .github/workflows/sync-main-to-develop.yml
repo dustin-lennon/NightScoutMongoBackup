@@ -1,0 +1,133 @@
+name: Sync Main to Develop
+permissions:
+  contents: write
+  pull-requests: write
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  sync:
+    name: Sync main to develop
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Sync main to develop
+        id: sync
+        run: |
+          # Fetch latest changes
+          git fetch origin main
+          git fetch origin develop
+
+          # Checkout develop branch
+          git checkout develop
+
+          # Check if develop is behind main
+          BEHIND=$(git rev-list --count develop..main)
+
+          if [ $BEHIND -gt 0 ]; then
+            echo "Develop is $BEHIND commits behind main. Syncing..."
+
+            # Attempt to merge main into develop
+            if git merge origin/main --no-edit; then
+              echo "Successfully merged main into develop"
+              git push origin develop
+              echo "sync_status=success" >> $GITHUB_OUTPUT
+            else
+              echo "Merge conflict detected. Will create pull request..."
+
+              # Reset to clean state
+              git merge --abort
+
+              # Create a sync branch for manual resolution
+              SYNC_BRANCH="sync/main-to-develop-$(date +%Y%m%d-%H%M%S)"
+              git checkout -b $SYNC_BRANCH
+
+              # Attempt merge again to capture conflicts in the branch
+              git merge origin/main --no-edit || true
+
+              # Stage all files (including conflicts)
+              git add .
+              git commit -m "Sync main to develop - conflicts need resolution" || true
+
+              git push origin $SYNC_BRANCH
+
+              echo "sync_branch=$SYNC_BRANCH" >> $GITHUB_OUTPUT
+              echo "sync_status=conflict" >> $GITHUB_OUTPUT
+              echo "Sync branch created: $SYNC_BRANCH"
+            fi
+          else
+            echo "Develop is up to date with main"
+            echo "sync_status=up_to_date" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Pull Request for conflicts
+        if: steps.sync.outputs.sync_status == 'conflict'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ steps.sync.outputs.sync_branch }}
+          title: "🔄 Sync main to develop (merge conflicts detected)"
+          body: |
+            ## 🔄 Automatic Sync: main → develop
+
+            **Status:** ⚠️ Merge conflicts detected
+
+            This pull request was automatically created because there were merge conflicts when attempting to sync changes from `main` into `develop`.
+
+            ### 📋 What happened:
+            - Changes were pushed to `main`
+            - Automatic sync to `develop` was attempted
+            - Merge conflicts were detected and require manual resolution
+
+            ### 🛠️ Next steps:
+            1. Review the conflicts in the files below
+            2. Resolve conflicts manually
+            3. Commit the resolved changes
+            4. Merge this PR to complete the sync
+
+            ### 📊 Sync Details:
+            - **Source branch:** `main`
+            - **Target branch:** `develop`
+            - **Sync branch:** `${{ steps.sync.outputs.sync_branch }}`
+            - **Triggered by:** ${{ github.event.head_commit.message || 'Manual workflow dispatch' }}
+
+            ---
+            *This PR was automatically created by the sync workflow. Please resolve conflicts and merge to maintain Git Flow integrity.*
+          base: develop
+          head: ${{ steps.sync.outputs.sync_branch }}
+          labels: |
+            sync
+            merge-conflict
+            automation
+          assignees: ${{ github.actor }}
+          reviewers: ${{ github.actor }}
+
+      - name: Comment on success
+        if: steps.sync.outputs.sync_status == 'success'
+        run: |
+          echo "✅ Successfully synced main to develop automatically"
+
+      - name: Comment on up-to-date
+        if: steps.sync.outputs.sync_status == 'up_to_date'
+        run: |
+          echo "ℹ️ Develop branch is already up to date with main"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Failed to sync main to develop. Check workflow logs for details."
