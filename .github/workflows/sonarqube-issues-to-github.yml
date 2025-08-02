@@ -1,4 +1,7 @@
 name: Sync SonarQube Issues to GitHub
+permissions:
+  contents: read
+  issues: write
 
 on:
   schedule:
