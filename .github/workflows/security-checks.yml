@@ -3,7 +3,7 @@ name: Security and Quality Checks
 on:
   workflow_dispatch:
   pull_request:
-    branches: [ develop, main ]
+    #branches: [ develop, main ]
     types: [ opened, synchronize, reopened ]
   push:
     branches: [ develop, main ]
