@@ -1,4 +1,7 @@
 name: Sync Main to Develop
+permissions:
+  contents: write
+  pull-requests: write
 
 on:
   push:
