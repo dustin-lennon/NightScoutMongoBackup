@@ -14,9 +14,16 @@ jest.mock('@sapphire/framework', () => {
 			login: jest.fn().mockResolvedValue(undefined),
 			user: { tag: 'TestBot#1234' },
 			logger: {
+				error: jest.fn(),
+				info: jest.fn()
+			}
+		})),
+		container: {
+			logger: {
+				info: jest.fn(),
 				error: jest.fn()
 			}
-		}))
+		}
 	};
 });
 
@@ -44,7 +51,8 @@ describe('Index Module', () => {
 			login: jest.fn().mockResolvedValue(undefined),
 			user: { tag: 'TestBot#1234' },
 			logger: {
-				error: jest.fn()
+				error: jest.fn(),
+				info: jest.fn()
 			}
 		};
 		SapphireClient.mockImplementation(() => mockClient);
@@ -82,18 +90,16 @@ describe('Index Module', () => {
 		});
 
 		it('should log ready message when bot is ready', () => {
-			const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
 			const { startBot } = require('../index');
 			startBot();
 
 			// Get the ready callback and execute it
 			const readyCallback = mockClient.once.mock.calls.find((call: any) => call[0] === 'ready')?.[1];
 			if (readyCallback) {
-				readyCallback();
+				readyCallback(mockClient);
 			}
 
-			expect(consoleSpy).toHaveBeenCalledWith('✅ Bot is online as TestBot#1234!');
-			consoleSpy.mockRestore();
+			expect(mockClient.logger.info).toHaveBeenCalledWith('✅ Bot is online as TestBot#1234!');
 		});
 
 		it('should not login when NODE_ENV is test', () => {
@@ -116,7 +122,6 @@ describe('Index Module', () => {
 			const loginError = new Error('Login failed');
 			mockClient.login.mockRejectedValue(loginError);
 
-			const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
 			const Sentry = require('@sentry/node');
 
 			process.env.NODE_ENV = 'production';
@@ -127,9 +132,7 @@ describe('Index Module', () => {
 			await new Promise(resolve => setTimeout(resolve, 0));
 
 			expect(Sentry.captureException).toHaveBeenCalledWith(loginError);
-			expect(consoleSpy).toHaveBeenCalledWith('❌ Failed to login:', loginError);
-
-			consoleSpy.mockRestore();
+			expect(mockClient.logger.error).toHaveBeenCalledWith('❌ Failed to login:', loginError);
 		});
 
 		it('should use default environment when NODE_ENV is not set', () => {
