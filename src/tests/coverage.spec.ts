@@ -22,8 +22,23 @@ import { attachErrorHandlers, startBot } from '#root/index';
 import { SapphireClient } from '@sapphire/framework';
 
 describe('Coverage Utility', () => {
+	let originalEnv: NodeJS.ProcessEnv;
+
 	beforeAll(() => {
+		// Store original environment
+		originalEnv = { ...process.env };
+
+		// Set up test environment
+		process.env.SENTRY_DSN = 'https://fake@dsn/123';
+		process.env.NODE_ENV = 'test';
+		process.env.DISCORD_TOKEN = 'fake-token';
+
 		attachErrorHandlers();
+	});
+
+	afterAll(() => {
+		// Restore original environment
+		process.env = originalEnv;
 	});
 
 	beforeEach(() => {
