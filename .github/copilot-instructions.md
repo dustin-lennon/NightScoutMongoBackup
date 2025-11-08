@@ -83,7 +83,7 @@ BOT_OWNER_IDS=              # Comma-separated Discord user IDs
 Copilot must assume and use:
 
 -   **Python**: Latest stable 3.x (>=3.10)
--   **Discord SDK**: dissnake (https://dissnake.dev/)
+-   **Discord SDK**: disnake (https://disnake.dev/)
 -   **Package / env management**: Poetry (https://python-poetry.org/).
 -   **MongoDB**: `motor` (async driver) for MongoDB Atlas.
 -   **AWS S3**: `boto3` (and `botocore`) for interacting with S3.
