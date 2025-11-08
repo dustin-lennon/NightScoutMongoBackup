@@ -79,7 +79,7 @@ async def test_bot_discord_connection() -> None:
     connection_verified = False
 
     @bot.event  # type: ignore[misc]
-    async def on_ready() -> None:  # type: ignore[unused-function]
+    async def on_ready() -> None:  # pyright: ignore[reportUnusedFunction]
         """Verify connection when bot is ready."""
         nonlocal connection_verified
 

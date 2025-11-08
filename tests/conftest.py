@@ -1,6 +1,5 @@
 """Test configuration and fixtures."""
 
-import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -21,7 +20,7 @@ else:
 
 # Tell Pydantic to use .env.test instead of .env
 # This environment variable is checked by pydantic-settings
-os.environ["SETTINGS_ENV_FILE"] = str(TEST_ENV_FILE)
+# Pass env_file to Settings to ensure pydantic-settings loads .env.test
 
 # Mock dotenv_vault module before any application code imports it
 # This prevents it from loading production .env when config.py is imported
@@ -34,7 +33,7 @@ import nightscout_backup_bot.config  # noqa: E402
 from nightscout_backup_bot.config import Settings  # noqa: E402
 
 # Create a test settings instance using environment variables from .env.test
-_test_settings = Settings()  # type: ignore[call-arg]
+_test_settings = Settings(env_file=str(TEST_ENV_FILE))  # type: ignore[call-arg]
 
 # Monkey-patch get_settings to return our test settings
 # This must happen BEFORE any test modules import application code

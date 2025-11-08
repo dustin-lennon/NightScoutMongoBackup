@@ -1,6 +1,6 @@
 """Configuration module for NightScout Backup Bot using Pydantic Settings."""
 
-from typing import Any, Literal
+from typing import Literal
 
 from dotenv_vault import load_dotenv  # type: ignore[import-untyped]
 from pydantic import Field, field_validator
@@ -127,10 +127,5 @@ def get_settings() -> Settings:
     return _settings
 
 
-# For backwards compatibility, create a property-like accessor
-class _SettingsProxy:
-    def __getattr__(self, name: str) -> Any:
-        return getattr(get_settings(), name)
-
-
-settings = _SettingsProxy()
+# Module-level settings instance for direct access and IDE autocomplete
+settings: Settings = get_settings()

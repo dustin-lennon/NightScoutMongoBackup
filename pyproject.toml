@@ -107,7 +107,9 @@ markers = [
 addopts = [
     "--strict-markers",
     "--strict-config",
-    "-m not integration",  # Exclude integration tests by default
+    # Exclude integration tests by default.
+    # To run integration tests, use: pytest -m integration
+    "-m not integration",
     "--cov=src/nightscout_backup_bot",
     "--cov-report=html",
     "--cov-report=term-missing",

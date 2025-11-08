@@ -106,8 +106,8 @@ class TestMongoConnectionString:
             settings = Settings()  # type: ignore[call-arg]
             connection_string = settings.mongo_connection_string
 
-            # Spaces should be URL-encoded as +
-            assert "my+password+123" in connection_string
+            # Spaces should be URL-encoded as %20
+            assert "my%20password%20123" in connection_string
 
     def test_mongo_connection_string_with_percent_chars(self) -> None:
         """Test connection string handles passwords with percent signs."""

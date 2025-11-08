@@ -33,8 +33,11 @@ def general_cog(mock_bot: MagicMock) -> GeneralCog:
 def mock_interaction() -> MagicMock:
     """Create mock Discord interaction for slash commands."""
     interaction = MagicMock(spec=disnake.ApplicationCommandInteraction)
-    interaction.author.id = 123456789
-    interaction.author.name = "TestUser"
+    mock_user = MagicMock()
+    mock_user.id = 123456789
+    mock_user.name = "TestUser"
+    mock_user.configure_mock(**{"__str__": MagicMock(return_value="TestUser#1234")})
+    interaction.author = mock_user
     interaction.response.send_message = AsyncMock()
     return interaction
 

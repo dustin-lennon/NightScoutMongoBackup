@@ -72,10 +72,7 @@ class TestMongoService:
         collection = MagicMock()
         collection.find.return_value = cursor
 
-        def mock_getitem(self: Any, name: str) -> Any:  # noqa: ANN401
-            return collection
-
-        mock_mongo_database.__getitem__ = mock_getitem
+        mock_mongo_database.__getitem__.return_value = collection
 
         result = await mongo_service.export_collections()
 

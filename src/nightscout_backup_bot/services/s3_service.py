@@ -67,7 +67,7 @@ class S3Service:
                     )
 
             # Generate public URL
-            url = self._generate_public_url(object_key)
+            url = self.generate_public_url(object_key)
 
             logger.info("S3 upload complete", url=url)
             return url
@@ -160,7 +160,7 @@ class S3Service:
             logger.error("Failed to list S3 backups", error=str(e))
             raise
 
-    def _generate_public_url(self, object_key: str) -> str:
+    def generate_public_url(self, object_key: str) -> str:
         """
         Generate public URL for S3 object.
 
@@ -172,15 +172,3 @@ class S3Service:
         """
         # Standard S3 public URL format
         return f"https://{self.bucket_name}.s3.{settings.aws_region}.amazonaws.com/{object_key}"
-
-    def generate_public_url(self, object_key: str) -> str:
-        """
-        Generate public URL for S3 object (public method).
-
-        Args:
-            object_key: S3 object key.
-
-        Returns:
-            Public URL string.
-        """
-        return self._generate_public_url(object_key)
