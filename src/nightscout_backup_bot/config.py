@@ -1,6 +1,6 @@
 """Configuration module for NightScout Backup Bot using Pydantic Settings."""
 
-from typing import Literal
+from enum import Enum
 
 from dotenv_vault import load_dotenv  # type: ignore[import-untyped]
 from pydantic import Field, field_validator
@@ -8,6 +8,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Load environment variables from .env file or .env.vault (if DOTENV_KEY is set)
 load_dotenv()
+
+
+class CompressionMethod(str, Enum):
+    """Supported compression methods for backup files."""
+
+    GZIP = "gzip"
+    BROTLI = "brotli"
 
 
 class Settings(BaseSettings):
@@ -48,8 +55,8 @@ class Settings(BaseSettings):
     enable_nightly_backup: bool = Field(True, description="Enable/disable scheduled nightly backups")
     backup_hour: int = Field(2, ge=0, le=23, description="Hour for nightly backup (24-hour format)")
     backup_minute: int = Field(0, ge=0, le=59, description="Minute for nightly backup")
-    compression_method: Literal["gzip", "brotli"] = Field(
-        "gzip", description="Compression method: 'gzip' (default) or 'brotli'"
+    compression_method: CompressionMethod = Field(
+        CompressionMethod.GZIP, description="Compression method: 'gzip' (default) or 'brotli'"
     )
 
     # Monitoring (Optional)
