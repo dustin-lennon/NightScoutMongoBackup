@@ -33,7 +33,8 @@ import nightscout_backup_bot.config  # noqa: E402
 from nightscout_backup_bot.config import Settings  # noqa: E402
 
 # Create a test settings instance using environment variables from .env.test
-_test_settings = Settings(env_file=str(TEST_ENV_FILE))  # type: ignore[call-arg]
+# Note: Pydantic Settings v2 uses _env_file parameter (with underscore prefix)
+_test_settings = Settings(_env_file=str(TEST_ENV_FILE))
 
 # Monkey-patch get_settings to return our test settings
 # This must happen BEFORE any test modules import application code
@@ -44,7 +45,7 @@ nightscout_backup_bot.config.get_settings = lambda: _test_settings
 @pytest.fixture
 def mock_settings() -> Settings:
     """Create mock settings for testing."""
-    return Settings(  # type: ignore[call-arg]
+    return Settings(
         discord_token="test_token",
         discord_client_id="123456789",
         backup_channel_id="987654321",
