@@ -2,9 +2,51 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Python: Launch Bot",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "nightscout_backup_bot.main",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/.env",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Python: Current File",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Python: Debug Tests",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "-v",
+        "${workspaceFolder}/tests"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Python: Debug Current Test File",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "-v",
+        "${file}"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
       "type": "node",
       "request": "launch",
-      "name": "Launch Discord Bot",
+      "name": "TypeScript: Launch Discord Bot",
       "program": "${workspaceFolder}/src/index.ts",
       "preLaunchTask": "tsc: build - tsconfig.json",
       "runtimeExecutable": "node",
@@ -18,7 +60,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Debug Jest Tests",
+      "name": "TypeScript: Debug Jest Tests",
       "program": "${workspaceFolder}/node_modules/.bin/jest",
       "args": ["--runInBand"],
       "console": "integratedTerminal",

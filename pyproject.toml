@@ -1,0 +1,135 @@
+[tool.poetry]
+name = "nightscout-backup-bot"
+version = "2.0.0"
+description = "NightScout MongoDB backup bot for Discord with S3 storage"
+authors = ["Dustin Lennon <dustin.lennon81@gmail.com>"]
+readme = "README.md"
+packages = [{include = "nightscout_backup_bot", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+disnake = "^2.9"
+motor = "^3.4"
+boto3 = "^1.35"
+pydantic = "^2.9"
+pydantic-settings = "^2.6"
+python-dotenv = "^1.0"
+python-dotenv-vault = "^0.7"
+sentry-sdk = "^2.0"
+aioboto3 = "^13.0"
+aiofiles = "^24.0"
+brotli = "^1.1"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+pytest-asyncio = "^0.24"
+pytest-cov = "^5.0"
+moto = {extras = ["s3"], version = "^5.0"}
+ruff = "^0.6"
+black = "^24.0"
+mypy = "^1.11"
+boto3-stubs = {extras = ["s3"], version = "^1.35"}
+pre-commit = "^4.4.0"
+
+[tool.poetry.scripts]
+nightscout-backup-bot = "nightscout_backup_bot.main:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+# Ruff configuration
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+]
+ignore = [
+    "E501", # line too long (handled by black)
+    "B008", # do not perform function calls in argument defaults
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+
+# Black configuration
+[tool.black]
+line-length = 120
+target-version = ["py312"]
+include = '\.pyi?$'
+
+# Mypy configuration
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = false
+warn_no_return = true
+follow_imports = "normal"
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "motor.*",
+    "aioboto3.*",
+    "moto.*",
+    "brotli.*",
+    "dotenv_vault.*",
+]
+ignore_missing_imports = true
+
+# Pytest configuration
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "-m not integration",  # Exclude integration tests by default
+    "--cov=src/nightscout_backup_bot",
+    "--cov-report=html",
+    "--cov-report=term-missing",
+]
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
