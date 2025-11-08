@@ -13,6 +13,12 @@ from ...services.s3_service import S3Service
 logger = StructuredLogger("cogs.general.listbackups")
 
 
+# Constants for file size formatting
+KB = 1024
+MB = KB * 1024
+GB = MB * 1024
+
+
 def is_owner() -> Any:
     """Check if user is a bot owner."""
 
@@ -38,14 +44,13 @@ def format_file_size(size_bytes: int) -> str:
     Returns:
         Formatted string (e.g., "1.5 MB").
     """
-    if size_bytes < 1024:
+    if size_bytes < KB:
         return f"{size_bytes} B"
-    elif size_bytes < 1024 * 1024:
-        return f"{size_bytes / 1024:.2f} KB"
-    elif size_bytes < 1024 * 1024 * 1024:
-        return f"{size_bytes / (1024 * 1024):.2f} MB"
-    else:
-        return f"{size_bytes / (1024 * 1024 * 1024):.2f} GB"
+    if size_bytes < MB:
+        return f"{size_bytes / KB:.2f} KB"
+    if size_bytes < GB:
+        return f"{size_bytes / MB:.2f} MB"
+    return f"{size_bytes / GB:.2f} GB"
 
 
 def format_datetime(dt: datetime) -> str:
