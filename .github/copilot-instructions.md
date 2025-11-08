@@ -262,9 +262,9 @@ python src/main.py  # or bot.py, index.py - TBD
 
 ### Discord Bot Development
 
--   Use `discord.py` library (latest stable version)
--   Implement slash commands using `discord.app_commands`
--   Use `@tasks.loop()` decorator for scheduled tasks
+-   Use `disnake` library (latest stable version)
+-   Implement slash commands using `@commands.slash_command` decorator
+-   Use `@tasks.loop()` decorator for scheduled tasks (from `disnake.ext.tasks`)
 -   Handle errors gracefully with Sentry integration
 
 ### MongoDB Connection
