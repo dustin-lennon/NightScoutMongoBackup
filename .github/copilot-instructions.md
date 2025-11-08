@@ -269,7 +269,7 @@ python src/main.py  # or bot.py, index.py - TBD
 
 ### MongoDB Connection
 
--   Use `pymongo` with MongoDB Atlas connection string
+-   Use `motor` (async MongoDB driver) with MongoDB Atlas connection string
 -   Export collections to JSON using `bson.json_util`
 -   Handle authentication and connection errors
 -   Support read-only backup operations
