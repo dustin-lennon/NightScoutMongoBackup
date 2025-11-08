@@ -75,9 +75,9 @@ class StructuredLogger:
         """Log warning message with context."""
         self.logger.warning(self._format_message(message, **context))
 
-    def error(self, message: str, **context: Any) -> None:
+    def error(self, message: str, exc_info: bool = False, **context: Any) -> None:
         """Log error message with context."""
-        self.logger.error(self._format_message(message, **context))
+        self.logger.error(self._format_message(message, **context), exc_info=exc_info)
 
     def critical(self, message: str, **context: Any) -> None:
         """Log critical message with context."""

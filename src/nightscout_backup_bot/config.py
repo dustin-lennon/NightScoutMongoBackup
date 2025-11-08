@@ -100,7 +100,7 @@ class Settings(BaseSettings):
         encoded_username = quote_plus(self.mongo_username)
         encoded_password = quote_plus(self.mongo_password)
 
-        return f"mongodb+srv://{encoded_username}:{encoded_password}" f"@{self.mongo_host}/?retryWrites=true&w=majority"
+        return f"mongodb+srv://{encoded_username}:{encoded_password}@{self.mongo_host}/?retryWrites=true&w=majority"
 
     @property
     def owner_id_list(self) -> list[str]:
