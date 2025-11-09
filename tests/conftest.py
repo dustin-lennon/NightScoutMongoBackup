@@ -29,33 +29,43 @@ mock_dotenv_vault.load_dotenv = Mock(return_value=None)
 sys.modules["dotenv_vault"] = mock_dotenv_vault
 
 # Import Settings after loading test environment  # noqa: E402
-import nightscout_backup_bot.config  # noqa: E402
-from nightscout_backup_bot.config import Settings  # noqa: E402
-
-# Create a test settings instance using environment variables from .env.test
-# Note: Pydantic Settings v2 uses _env_file parameter (with underscore prefix)
-_test_settings = Settings(_env_file=str(TEST_ENV_FILE))
-
-# Monkey-patch get_settings to return our test settings
-# This must happen BEFORE any test modules import application code
-nightscout_backup_bot.config._settings = _test_settings  # type: ignore[assignment]
-nightscout_backup_bot.config.get_settings = lambda: _test_settings
+from nightscout_backup_bot.config import CompressionMethod, Settings  # noqa: E402
 
 
 @pytest.fixture
 def mock_settings() -> Settings:
     """Create mock settings for testing."""
+    # This fixture provides a complete Settings object for tests,
+    # bypassing environment variable loading for full isolation.
     return Settings(
         discord_token="test_token",
         discord_client_id="123456789",
+        discord_public_key="test_public_key",
         backup_channel_id="987654321",
+        bot_report_channel_id="1234567890",
+        bot_owner_ids="111111111,222222222",
         mongo_host="test.mongodb.net",
         mongo_username="testuser",
         mongo_password="testpass",
         mongo_db="testdb",
+        mongo_api_key="test_api_key",
+        mongo_db_max_size=512,
         aws_access_key_id="test_access_key",
         aws_secret_access_key="test_secret_key",
+        aws_region="us-east-1",
         s3_backup_bucket="test-bucket",
+        enable_nightly_backup=False,
+        backup_hour=2,
+        backup_minute=0,
+        compression_method=CompressionMethod.GZIP,
+        sentry_dsn=None,
+        sentry_auth_token=None,
+        node_env="development",
+        test_guilds="1234567890",
+        linode_ssh_host=None,
+        linode_ssh_user="root",
+        linode_ssh_key_path=None,
+        pm2_dexcom_app_name="Dexcom",
     )
 
 
@@ -73,8 +83,6 @@ def mock_get_settings_globally(mock_settings: Settings, monkeypatch: pytest.Monk
     import nightscout_backup_bot.config
 
     monkeypatch.setattr(nightscout_backup_bot.config, "get_settings", lambda: mock_settings)
-    # Also reset the global _settings to None to ensure get_settings is called
-    monkeypatch.setattr(nightscout_backup_bot.config, "_settings", mock_settings)
 
 
 @pytest.fixture

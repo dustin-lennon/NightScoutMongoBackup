@@ -254,5 +254,5 @@ class TestCompressionMethod:
     def test_compression_method_enum_string_comparison(self) -> None:
         """Test that CompressionMethod enum can be compared with strings."""
         # This is important for backward compatibility
-        assert CompressionMethod.GZIP == "gzip"
-        assert CompressionMethod.BROTLI == "brotli"
+        assert CompressionMethod.GZIP.value == "gzip"
+        assert CompressionMethod.BROTLI.value == "brotli"
