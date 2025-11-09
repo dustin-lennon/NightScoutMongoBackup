@@ -6,6 +6,7 @@ import datetime
 import disnake
 from disnake.ext import commands, tasks
 
+from nightscout_backup_bot.cogs.admin.thread_management import ThreadManagement
 from nightscout_backup_bot.config import settings
 from nightscout_backup_bot.logging_config import StructuredLogger, setup_logging
 from nightscout_backup_bot.services.backup_service import BackupService
@@ -95,6 +96,24 @@ class NightScoutBackupBot(commands.Bot):
 
             logger.info("Nightly backup completed", success=result["success"], url=result.get("url"))
 
+            # Thread management: archive/delete old threads
+            cog = self.get_cog("ThreadManagement")
+            if cog:
+                tm_cog = cog  # type: ignore
+                if isinstance(tm_cog, ThreadManagement):
+                    archived_count, deleted_count = await tm_cog.manage_threads_impl(channel)
+
+                    # Report results in the backup channel
+                    await channel.send(
+                        f"🧹 Thread management complete.\n"
+                        f"Archived threads: {archived_count}\n"
+                        f"Deleted threads: {deleted_count}"
+                    )
+                else:
+                    logger.warning("Cog 'ThreadManagement' is not of expected type; skipping thread management.")
+            else:
+                logger.warning("ThreadManagement cog not loaded; skipping thread management.")
+
         except Exception as e:
             logger.error("Nightly backup failed", error=str(e))
 
@@ -137,6 +156,7 @@ class NightScoutBackupBot(commands.Bot):
             "nightscout_backup_bot.cogs.admin.backup",
             "nightscout_backup_bot.cogs.admin.site",
             "nightscout_backup_bot.cogs.admin.system",
+            "nightscout_backup_bot.cogs.admin.thread_management",
         ]
 
         for cog in cogs:
