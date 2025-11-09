@@ -113,7 +113,7 @@ async def _run_ssh(target: ProcessTarget, args: list[str]) -> tuple[int, str, st
     if target.ssh_key_path:
         ssh_cmd_list.extend(["-i", target.ssh_key_path])
 
-    ssh_cmd_list.extend([target.ssh_connection_str, f'bash -lc "{remote_cmd}"'])
+    ssh_cmd_list.extend([target.ssh_connection_str, f"'bash -lc \"{remote_cmd}\"'"])
     ssh_cmd_str = " ".join(ssh_cmd_list)
 
     logger.info("Executing remote PM2 command via SSH", command=ssh_cmd_str)
@@ -176,6 +176,11 @@ async def pm2_stop(target_key: str) -> PM2Result:
 async def pm2_restart(target_key: str) -> PM2Result:
     """Restarts a PM2 process."""
     return await _execute_action(target_key, "restart")
+
+
+async def pm2_status(target_key: str) -> PM2Result:
+    """Gets the status of a PM2 process."""
+    return await _execute_action(target_key, "status")
 
 
 class PM2ProcessManager:
