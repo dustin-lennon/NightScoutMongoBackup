@@ -1,6 +1,7 @@
 """Unit tests for configuration and settings."""
 
 import os
+import urllib.parse
 from unittest.mock import patch
 
 from nightscout_backup_bot.config import CompressionMethod, Settings
@@ -179,6 +180,19 @@ class TestMongoConnectionString:
 
             assert "retryWrites=true" in connection_string
             assert "w=majority" in connection_string
+
+    @property
+    def mongo_connection_string(self) -> str:
+        """Return the MongoDB Atlas connection string (example values)."""
+        # Example values for demonstration; replace with actual test values if needed
+        mongo_username = "testuser"
+        mongo_password = "testpass"
+        mongo_host = "cluster.mongodb.net"
+        user = urllib.parse.quote(mongo_username, safe="")
+        pwd = urllib.parse.quote(mongo_password, safe="")
+        host = mongo_host
+        # MongoDB Atlas format: no database in path, use /? for query params
+        return f"mongodb+srv://{user}:{pwd}@{host}/?" "retryWrites=true&w=majority"
 
 
 class TestCompressionMethod:

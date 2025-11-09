@@ -3,20 +3,21 @@
 import disnake
 from disnake.ext import commands
 
-from ...logging_config import StructuredLogger
+from nightscout_backup_bot.bot import NightScoutBackupBot
+from nightscout_backup_bot.logging_config import StructuredLogger
 
-logger = StructuredLogger("cogs.general.ping")
+logger = StructuredLogger(__name__)
 
 
 class GeneralCog(commands.Cog):
     """General purpose commands available to all users."""
 
-    def __init__(self, bot: commands.Bot) -> None:
+    def __init__(self, bot: NightScoutBackupBot) -> None:
         """Initialize general cog."""
         self.bot = bot
 
     @commands.slash_command(name="ping", description="Check if the bot is responsive")
-    async def ping(self, inter: disnake.ApplicationCommandInteraction) -> None:  # type: ignore
+    async def ping(self, inter: disnake.ApplicationCommandInteraction[NightScoutBackupBot]) -> None:
         """
         Ping command to check bot responsiveness.
 
@@ -37,6 +38,6 @@ class GeneralCog(commands.Cog):
         await inter.response.send_message(embed=embed)
 
 
-def setup(bot: commands.Bot) -> None:
+def setup(bot: NightScoutBackupBot) -> None:
     """Setup function to add cog to bot."""
     bot.add_cog(GeneralCog(bot))

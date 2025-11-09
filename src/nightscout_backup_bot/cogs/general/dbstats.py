@@ -4,10 +4,11 @@ import disnake
 from disnake.ext import commands
 from motor.motor_asyncio import AsyncIOMotorClient
 
-from ...config import get_settings
-from ...logging_config import StructuredLogger
+from nightscout_backup_bot.bot import NightScoutBackupBot
+from nightscout_backup_bot.config import get_settings
+from nightscout_backup_bot.logging_config import StructuredLogger
 
-logger = StructuredLogger("cogs.general.dbstats")
+logger = StructuredLogger(__name__)
 
 
 def format_bytes(bytes_value: int, binary: bool = True) -> str:
@@ -66,7 +67,7 @@ def parse_size_with_unit(size_str: str) -> tuple[float, str, int]:
 class DBStatsCog(commands.Cog):
     """Database statistics commands."""
 
-    def __init__(self, bot: commands.Bot) -> None:
+    def __init__(self, bot: NightScoutBackupBot) -> None:
         """Initialize DB stats cog."""
         self.bot = bot
         self.settings = get_settings()
@@ -75,7 +76,7 @@ class DBStatsCog(commands.Cog):
         name="dbstats",
         description="Display MongoDB statistics for Nightscout database",
     )
-    async def dbstats(self, inter: disnake.ApplicationCommandInteraction) -> None:  # type: ignore
+    async def dbstats(self, inter: disnake.ApplicationCommandInteraction[NightScoutBackupBot]) -> None:
         """
         Get database statistics from MongoDB.
 
@@ -88,9 +89,10 @@ class DBStatsCog(commands.Cog):
         mongo_client: AsyncIOMotorClient[dict[str, str]] | None = None
 
         try:
+            settings = self.settings
             # Connect to MongoDB
-            mongo_client = AsyncIOMotorClient(self.settings.mongo_connection_string)
-            db = mongo_client[self.settings.mongo_db]
+            mongo_client = AsyncIOMotorClient(settings.mongo_connection_string)
+            db = mongo_client[settings.mongo_db]
 
             # Get database statistics
             stats_result = await db.command({"dbStats": 1})
@@ -103,7 +105,7 @@ class DBStatsCog(commands.Cog):
             agg_value, agg_unit, _ = parse_size_with_unit(aggregate_size_formatted)
 
             # Calculate percentage used if max size is configured
-            max_size = self.settings.mongo_db_max_size
+            max_size = settings.mongo_db_max_size
             percentage_used = None
             warning_level = False
 
@@ -145,7 +147,7 @@ class DBStatsCog(commands.Cog):
             # Add warning/recommendation if database is getting full
             if warning_level:
                 embed.add_field(
-                    name="⚠️ Recommendation",
+                    name="\u26a0\ufe0f Recommendation",
                     value="Your database is close to being full. Backup the database and clear some old entries "
                     "out to shrink the size.",
                     inline=False,
@@ -171,7 +173,7 @@ class DBStatsCog(commands.Cog):
             )
 
             error_embed = disnake.Embed(
-                title="❌ Error",
+                title="\u274c Error",
                 description="Failed to retrieve database statistics. Please try again later.",
                 color=disnake.Color.red(),
             )
@@ -183,6 +185,6 @@ class DBStatsCog(commands.Cog):
                 mongo_client.close()
 
 
-def setup(bot: commands.Bot) -> None:
+def setup(bot: NightScoutBackupBot) -> None:
     """Setup function to add cog to bot."""
     bot.add_cog(DBStatsCog(bot))

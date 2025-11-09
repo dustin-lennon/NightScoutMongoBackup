@@ -1,6 +1,3 @@
 """Cogs package initialization."""
 
-from .admin import AdminCog
-from .general import GeneralCog
-
-__all__ = ["AdminCog", "GeneralCog"]
+# This file is intentionally left empty. All cogs should be imported directly from their modules.
