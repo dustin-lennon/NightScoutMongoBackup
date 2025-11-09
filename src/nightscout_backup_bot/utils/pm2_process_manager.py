@@ -89,7 +89,11 @@ async def _run(cmd: str) -> tuple[int, str, str]:
 
 async def _run_local(pm2_cmd: str, args: list[str]) -> tuple[int, str, str]:
     """Run a PM2 command on the local machine."""
-    cmd_list = [pm2_cmd, *args]
+    # If pm2_cmd is npx, ensure 'pm2' is the first argument
+    if pm2_cmd.endswith("npx"):
+        cmd_list = [pm2_cmd, "pm2", *args]
+    else:
+        cmd_list = [pm2_cmd, *args]
     cmd_str = " ".join(shlex.quote(part) for part in cmd_list)
     logger.info("Executing local PM2 command", command=cmd_str)
     return await _run(cmd_str)
