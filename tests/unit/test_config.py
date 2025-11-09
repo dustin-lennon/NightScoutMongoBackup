@@ -3,7 +3,7 @@
 import os
 from unittest.mock import patch
 
-from nightscout_backup_bot.config import Settings
+from nightscout_backup_bot.config import CompressionMethod, Settings
 
 
 class TestMongoConnectionString:
@@ -179,3 +179,80 @@ class TestMongoConnectionString:
 
             assert "retryWrites=true" in connection_string
             assert "w=majority" in connection_string
+
+
+class TestCompressionMethod:
+    """Test CompressionMethod enum."""
+
+    def test_compression_method_enum_values(self) -> None:
+        """Test that CompressionMethod enum has expected values."""
+        assert CompressionMethod.GZIP.value == "gzip"
+        assert CompressionMethod.BROTLI.value == "brotli"
+
+    def test_compression_method_default(self) -> None:
+        """Test that default compression method is GZIP."""
+        with patch.dict(
+            os.environ,
+            {
+                "DISCORD_TOKEN": "test_token",
+                "DISCORD_CLIENT_ID": "test_client_id",
+                "BACKUP_CHANNEL_ID": "test_channel",
+                "MONGO_HOST": "cluster.mongodb.net",
+                "MONGO_USERNAME": "testuser",
+                "MONGO_PASSWORD": "testpass",
+                "MONGO_DB": "testdb",
+                "AWS_ACCESS_KEY_ID": "test_access",
+                "AWS_SECRET_ACCESS_KEY": "test_secret",
+                "S3_BACKUP_BUCKET": "test_bucket",
+            },
+        ):
+            settings = Settings()  # type: ignore[call-arg]
+            assert settings.compression_method == CompressionMethod.GZIP
+
+    def test_compression_method_from_env_gzip(self) -> None:
+        """Test that compression method can be set to gzip via environment variable."""
+        with patch.dict(
+            os.environ,
+            {
+                "DISCORD_TOKEN": "test_token",
+                "DISCORD_CLIENT_ID": "test_client_id",
+                "BACKUP_CHANNEL_ID": "test_channel",
+                "MONGO_HOST": "cluster.mongodb.net",
+                "MONGO_USERNAME": "testuser",
+                "MONGO_PASSWORD": "testpass",
+                "MONGO_DB": "testdb",
+                "AWS_ACCESS_KEY_ID": "test_access",
+                "AWS_SECRET_ACCESS_KEY": "test_secret",
+                "S3_BACKUP_BUCKET": "test_bucket",
+                "COMPRESSION_METHOD": "gzip",
+            },
+        ):
+            settings = Settings()  # type: ignore[call-arg]
+            assert settings.compression_method == CompressionMethod.GZIP
+
+    def test_compression_method_from_env_brotli(self) -> None:
+        """Test that compression method can be set to brotli via environment variable."""
+        with patch.dict(
+            os.environ,
+            {
+                "DISCORD_TOKEN": "test_token",
+                "DISCORD_CLIENT_ID": "test_client_id",
+                "BACKUP_CHANNEL_ID": "test_channel",
+                "MONGO_HOST": "cluster.mongodb.net",
+                "MONGO_USERNAME": "testuser",
+                "MONGO_PASSWORD": "testpass",
+                "MONGO_DB": "testdb",
+                "AWS_ACCESS_KEY_ID": "test_access",
+                "AWS_SECRET_ACCESS_KEY": "test_secret",
+                "S3_BACKUP_BUCKET": "test_bucket",
+                "COMPRESSION_METHOD": "brotli",
+            },
+        ):
+            settings = Settings()  # type: ignore[call-arg]
+            assert settings.compression_method == CompressionMethod.BROTLI
+
+    def test_compression_method_enum_string_comparison(self) -> None:
+        """Test that CompressionMethod enum can be compared with strings."""
+        # This is important for backward compatibility
+        assert CompressionMethod.GZIP == "gzip"
+        assert CompressionMethod.BROTLI == "brotli"
