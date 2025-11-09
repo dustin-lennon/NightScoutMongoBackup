@@ -1,37 +1,23 @@
 """QueryDB command for querying NightScout MongoDB collections."""
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 import disnake
 from disnake.ext import commands
 
-from ...config import settings
-from ...logging_config import StructuredLogger
-from ...services.mongo_service import MongoService
+from nightscout_backup_bot.bot import NightScoutBackupBot
+from nightscout_backup_bot.logging_config import StructuredLogger
+from nightscout_backup_bot.services.mongo_service import MongoService
+from nightscout_backup_bot.utils.checks import is_owner
 
-logger = StructuredLogger("cogs.general.querydb")
-
-
-def is_owner() -> Any:
-    """Check if user is a bot owner."""
-
-    async def predicate(inter: disnake.ApplicationCommandInteraction) -> bool:  # type: ignore
-        if str(inter.author.id) not in settings.owner_id_list:
-            await inter.response.send_message(
-                "❌ This command is restricted to bot administrators only.",
-                ephemeral=True,
-            )
-            return False
-        return True
-
-    return commands.check(predicate)  # type: ignore
+logger = StructuredLogger(__name__)
 
 
 class QueryDBCog(commands.Cog):
     """Database query commands for administrators."""
 
-    def __init__(self, bot: commands.Bot) -> None:
+    def __init__(self, bot: NightScoutBackupBot) -> None:
         """Initialize QueryDB cog."""
         self.bot = bot
         self.mongo_service = MongoService()
@@ -53,15 +39,16 @@ class QueryDBCog(commands.Cog):
                 fields.append({"name": key, "value": str(value), "inline": True})
             else:
                 # Add separator for uploader section
-                fields.append({"name": key, "value": "\u200b", "inline": False})
+                fields.append({"name": key, "value": "​", "inline": False})
 
                 # Add uploader sub-fields if value is a dict
                 if isinstance(value, dict):
-                    for sub_key, sub_value in value.items():  # type: ignore[var-annotated]
+                    typed_dict = cast(dict[str, Any], value)
+                    for sub_key, sub_value in typed_dict.items():
                         fields.append(
                             {
-                                "name": str(sub_key),  # type: ignore[arg-type]
-                                "value": str(sub_value),  # type: ignore[arg-type]
+                                "name": sub_key,
+                                "value": str(sub_value),
                                 "inline": True,
                             }
                         )
@@ -211,7 +198,7 @@ class QueryDBCog(commands.Cog):
 
     async def _handle_entries(
         self,
-        inter: disnake.ApplicationCommandInteraction,  # type: ignore
+        inter: disnake.ApplicationCommandInteraction[NightScoutBackupBot],
         date_param: str,
     ) -> None:
         """
@@ -271,7 +258,7 @@ class QueryDBCog(commands.Cog):
 
     async def _handle_device_status(
         self,
-        inter: disnake.ApplicationCommandInteraction,  # type: ignore
+        inter: disnake.ApplicationCommandInteraction[NightScoutBackupBot],
         date_param: str,
     ) -> None:
         """
@@ -331,7 +318,7 @@ class QueryDBCog(commands.Cog):
 
     async def _handle_treatments(
         self,
-        inter: disnake.ApplicationCommandInteraction,  # type: ignore
+        inter: disnake.ApplicationCommandInteraction[NightScoutBackupBot],
         date_param: str,
     ) -> None:
         """
@@ -394,9 +381,9 @@ class QueryDBCog(commands.Cog):
         description="Query NightScout database collections (Admin only)",
     )
     @is_owner()
-    async def querydb(  # type: ignore[misc]
+    async def querydb(
         self,
-        inter: disnake.ApplicationCommandInteraction,  # type: ignore[type-arg]
+        inter: disnake.ApplicationCommandInteraction[NightScoutBackupBot],
         collection: Literal["Entries", "Device Status", "Treatments"],
         date: str = commands.Param(  # type: ignore[assignment]
             description="Date to query (YYYY-MM-DD format, e.g., 2024-01-01)"
@@ -430,13 +417,13 @@ class QueryDBCog(commands.Cog):
         internal_collection = collection_map.get(collection)
 
         if internal_collection == "entries":
-            await self._handle_entries(inter, date)  # type: ignore[arg-type]
+            await self._handle_entries(inter, date)
         elif internal_collection == "devicestatus":
-            await self._handle_device_status(inter, date)  # type: ignore[arg-type]
+            await self._handle_device_status(inter, date)
         elif internal_collection == "treatments":
-            await self._handle_treatments(inter, date)  # type: ignore[arg-type]
+            await self._handle_treatments(inter, date)
 
 
-def setup(bot: commands.Bot) -> None:
+def setup(bot: NightScoutBackupBot) -> None:
     """Setup function to add cog to bot."""
     bot.add_cog(QueryDBCog(bot))

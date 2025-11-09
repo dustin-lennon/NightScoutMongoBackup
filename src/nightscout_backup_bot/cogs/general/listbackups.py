@@ -6,32 +6,18 @@ from typing import Any
 import disnake
 from disnake.ext import commands
 
-from ...config import settings
-from ...logging_config import StructuredLogger
-from ...services.s3_service import S3Service
+from nightscout_backup_bot.bot import NightScoutBackupBot
+from nightscout_backup_bot.logging_config import StructuredLogger
+from nightscout_backup_bot.services.s3_service import S3Service
+from nightscout_backup_bot.utils.checks import is_owner
 
-logger = StructuredLogger("cogs.general.listbackups")
+logger = StructuredLogger(__name__)
 
 
 # Constants for file size formatting
 KB = 1024
 MB = KB * 1024
 GB = MB * 1024
-
-
-def is_owner() -> Any:
-    """Check if user is a bot owner."""
-
-    async def predicate(inter: disnake.ApplicationCommandInteraction) -> bool:  # type: ignore
-        if str(inter.author.id) not in settings.owner_id_list:
-            await inter.response.send_message(
-                "❌ This command is restricted to bot owners only.",
-                ephemeral=True,
-            )
-            return False
-        return True
-
-    return commands.check(predicate)  # type: ignore
 
 
 def format_file_size(size_bytes: int) -> str:
@@ -76,15 +62,22 @@ def format_datetime(dt: datetime) -> str:
 class BackupPaginatorView(disnake.ui.View):
     """Paginated view for backup listings."""
 
-    def __init__(self, backups: list[dict[str, Any]], s3_service: S3Service) -> None:
+    def __init__(
+        self,
+        backups: list[dict[str, Any]],
+        s3_service: S3Service,
+        *,
+        timeout: float | None = 300,
+    ) -> None:
         """
         Initialize paginator view.
 
         Args:
             backups: List of backup objects from S3.
             s3_service: S3Service instance for generating URLs.
+            timeout: The timeout for the view.
         """
-        super().__init__(timeout=300)  # 5 minute timeout
+        super().__init__(timeout=timeout)
         self.backups = backups
         self.s3_service = s3_service
         self.current_page = 0
@@ -92,7 +85,6 @@ class BackupPaginatorView(disnake.ui.View):
 
         # Disable buttons if only one page
         if self.total_pages <= 1:
-            # Buttons are added to self.children in order of definition
             for item in self.children:
                 if isinstance(item, disnake.ui.Button):
                     item.disabled = True
@@ -142,29 +134,33 @@ class BackupPaginatorView(disnake.ui.View):
 
         return embed
 
-    @disnake.ui.button(label="◀ Previous", style=disnake.ButtonStyle.secondary)  # type: ignore
+    @disnake.ui.button(label="◀ Previous", style=disnake.ButtonStyle.secondary)  # type: ignore[arg-type]
     async def previous_button(
         self,
-        button: disnake.ui.Button[Any],
-        inter: disnake.MessageInteraction,  # type: ignore
+        button: disnake.ui.Button["BackupPaginatorView"],
+        inter: disnake.MessageInteraction[NightScoutBackupBot],
     ) -> None:
         """Handle previous button click."""
         self.current_page = max(0, self.current_page - 1)
 
         # Update button states
-        self.previous_button.disabled = self.current_page == 0  # type: ignore
-        self.next_button.disabled = False  # type: ignore
+        self.previous_button.disabled = self.current_page == 0
+        self.next_button.disabled = False
 
         await inter.response.edit_message(embed=self.create_embed(), view=self)
 
-    @disnake.ui.button(label="Next ▶", style=disnake.ButtonStyle.secondary)  # type: ignore
-    async def next_button(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:  # type: ignore
+    @disnake.ui.button(label="Next ▶", style=disnake.ButtonStyle.secondary)  # type: ignore[arg-type]
+    async def next_button(
+        self,
+        button: disnake.ui.Button["BackupPaginatorView"],
+        inter: disnake.MessageInteraction[NightScoutBackupBot],
+    ) -> None:
         """Handle next button click."""
         self.current_page = min(self.total_pages - 1, self.current_page + 1)
 
         # Update button states
-        self.previous_button.disabled = False  # type: ignore
-        self.next_button.disabled = self.current_page == self.total_pages - 1  # type: ignore
+        self.previous_button.disabled = False
+        self.next_button.disabled = self.current_page == self.total_pages - 1
 
         await inter.response.edit_message(embed=self.create_embed(), view=self)
 
@@ -178,7 +174,7 @@ class BackupPaginatorView(disnake.ui.View):
 class ListBackupsCog(commands.Cog):
     """Command for listing available backup files."""
 
-    def __init__(self, bot: commands.Bot) -> None:
+    def __init__(self, bot: NightScoutBackupBot) -> None:
         """Initialize list backups cog."""
         self.bot = bot
         self.s3_service = S3Service()
@@ -188,7 +184,7 @@ class ListBackupsCog(commands.Cog):
         description="List all available backup files in S3 (Admin only)",
     )
     @is_owner()
-    async def listbackups(self, inter: disnake.ApplicationCommandInteraction) -> None:  # type: ignore
+    async def listbackups(self, inter: disnake.ApplicationCommandInteraction[NightScoutBackupBot]) -> None:
         """
         List all available backup files with pagination.
 
@@ -256,6 +252,6 @@ class ListBackupsCog(commands.Cog):
             await inter.followup.send(embed=error_embed, ephemeral=True)
 
 
-def setup(bot: commands.Bot) -> None:
+def setup(bot: NightScoutBackupBot) -> None:
     """Setup function to add cog to bot."""
     bot.add_cog(ListBackupsCog(bot))

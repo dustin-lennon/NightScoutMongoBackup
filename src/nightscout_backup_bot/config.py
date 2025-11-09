@@ -73,6 +73,24 @@ class Settings(BaseSettings):
     linode_ssh_key_path: str | None = Field(None, description="Path to SSH private key (defaults to ~/.ssh/id_rsa)")
     pm2_dexcom_app_name: str = Field("Dexcom", description="PM2 application name to manage")
 
+    # PM2 Config
+    app_env: str = Field("development", description="Application environment: 'development' or 'production'")
+
+    # Dexcom/NightScout PM2 Config (via SSH)
+    nightscout_pm2_app_name: str = Field("dexcom", description="PM2 app name for the NightScout site")
+    nightscout_pm2_ssh_user: str | None = Field(None, description="SSH user for NightScout server")
+    nightscout_pm2_ssh_host: str | None = Field(None, description="SSH host for NightScout server")
+    nightscout_pm2_ssh_key_path: str | None = Field(None, description="Path to SSH key for NightScout server")
+    nightscout_pm2_cmd: str = Field("npx pm2", description="PM2 command/path on NightScout server")
+
+    # Bot PM2 Config
+    bot_pm2_app_name: str = Field("nightscout-backup-bot-dev", description="PM2 app name for the bot itself")
+    bot_pm2_mode: str = Field("local", description="Execution mode for bot PM2 commands: 'local' or 'ssh'")
+    bot_pm2_ssh_user: str | None = Field(None, description="SSH user for bot's production server")
+    bot_pm2_ssh_host: str | None = Field(None, description="SSH host for bot's production server")
+    bot_pm2_ssh_key_path: str | None = Field(None, description="Path to SSH key for bot's production server")
+    bot_pm2_cmd: str = Field("npx pm2", description="PM2 command/path for the bot")
+
     @field_validator("bot_owner_ids", mode="before")
     @classmethod
     def parse_owner_ids(cls, v: str) -> str:
@@ -101,11 +119,11 @@ class Settings(BaseSettings):
 
         The database is specified separately when accessing client[database_name].
         """
-        from urllib.parse import quote_plus
+        from urllib.parse import quote
 
         # URL-encode username and password to handle special characters
-        encoded_username = quote_plus(self.mongo_username)
-        encoded_password = quote_plus(self.mongo_password)
+        encoded_username = quote(self.mongo_username, safe="")
+        encoded_password = quote(self.mongo_password, safe="")
 
         return f"mongodb+srv://{encoded_username}:{encoded_password}@{self.mongo_host}/?retryWrites=true&w=majority"
 

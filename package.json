@@ -1,0 +1,27 @@
+{
+  "name": "nightscoutmongobackup",
+  "version": "1.0.0",
+  "description": "[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=dustin-lennon_NightScoutMongoBackup&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=dustin-lennon_NightScoutMongoBackup) [![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=dustin-lennon_NightScoutMongoBackup&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=dustin-lennon_NightScoutMongoBackup) [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=dustin-lennon_NightScoutMongoBackup&metric=coverage)](https://sonarcloud.io/summary/new_code?id=dustin-lennon_NightScoutMongoBackup) [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=dustin-lennon_NightScoutMongoBackup&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=dustin-lennon_NightScoutMongoBackup) [![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=dustin-lennon_NightScoutMongoBackup&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=dustin-lennon_NightScoutMongoBackup)",
+  "main": "ecosystem.config.js",
+  "directories": {
+    "test": "tests"
+  },
+  "dependencies": {
+    "dotenv-vault": "^1.27.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dustin-lennon/NightScoutMongoBackup.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dustin-lennon/NightScoutMongoBackup/issues"
+  },
+  "homepage": "https://github.com/dustin-lennon/NightScoutMongoBackup#readme"
+}

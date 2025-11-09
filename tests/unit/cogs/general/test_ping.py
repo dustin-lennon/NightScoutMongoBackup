@@ -17,7 +17,7 @@ from nightscout_backup_bot.cogs.general.ping import GeneralCog
 
 @pytest.fixture
 def mock_bot() -> MagicMock:
-    """Create mock bot instance with default latency."""
+    """Create a mock bot instance."""
     bot = MagicMock()
     bot.latency = 0.045  # 45ms latency
     return bot

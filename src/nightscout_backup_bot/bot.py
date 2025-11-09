@@ -1,17 +1,24 @@
 """Discord bot initialization and setup."""
 
+import asyncio
+import datetime
+
 import disnake
 from disnake.ext import commands, tasks
 
-from .config import settings
-from .logging_config import StructuredLogger, setup_logging
-from .services import BackupService
+from nightscout_backup_bot.config import settings
+from nightscout_backup_bot.logging_config import StructuredLogger, setup_logging
+from nightscout_backup_bot.services.backup_service import BackupService
+from nightscout_backup_bot.utils.pm2_process_manager import PM2ProcessManager
 
-logger = StructuredLogger("bot")
+logger = StructuredLogger(__name__)
 
 
 class NightScoutBackupBot(commands.Bot):
     """Custom bot class for NightScout backup operations."""
+
+    backup_service: BackupService
+    pm2_process_manager: PM2ProcessManager
 
     def __init__(self) -> None:
         """Initialize the bot."""
@@ -27,6 +34,7 @@ class NightScoutBackupBot(commands.Bot):
         )
 
         self.backup_service = BackupService()
+        self.pm2_process_manager = PM2ProcessManager()
 
     async def on_ready(self) -> None:
         """Called when bot is ready."""
@@ -47,7 +55,7 @@ class NightScoutBackupBot(commands.Bot):
                     minute=settings.backup_minute,
                 )
 
-    async def on_slash_command(self, inter: disnake.ApplicationCommandInteraction) -> None:  # type: ignore
+    async def on_slash_command(self, inter: disnake.ApplicationCommandInteraction["NightScoutBackupBot"]) -> None:
         """Called when a slash command is used."""
         logger.info(
             "Slash command executed",
@@ -59,7 +67,7 @@ class NightScoutBackupBot(commands.Bot):
 
     async def on_slash_command_error(
         self,
-        interaction: disnake.ApplicationCommandInteraction,  # type: ignore
+        interaction: disnake.ApplicationCommandInteraction["NightScoutBackupBot"],
         exception: commands.CommandError,
     ) -> None:
         """Handle slash command errors."""
@@ -96,8 +104,6 @@ class NightScoutBackupBot(commands.Bot):
         await self.wait_until_ready()
 
         # Calculate time until next backup
-        import datetime
-
         now = datetime.datetime.now()
         target_time = now.replace(
             hour=settings.backup_hour,
@@ -112,11 +118,13 @@ class NightScoutBackupBot(commands.Bot):
 
         # Wait until target time
         wait_seconds = (target_time - now).total_seconds()
-        logger.info("Nightly backup scheduled", next_run=target_time.isoformat(), wait_seconds=wait_seconds)
+        logger.info(
+            "Nightly backup scheduled",
+            next_run=target_time.isoformat(),
+            wait_seconds=wait_seconds,
+        )
 
         await self.wait_until_ready()  # Ensure bot is fully ready
-        import asyncio
-
         await asyncio.sleep(wait_seconds)
 
     def load_cogs(self) -> None:
@@ -128,6 +136,7 @@ class NightScoutBackupBot(commands.Bot):
             "nightscout_backup_bot.cogs.general.listbackups",
             "nightscout_backup_bot.cogs.admin.backup",
             "nightscout_backup_bot.cogs.admin.site",
+            "nightscout_backup_bot.cogs.admin.system",
         ]
 
         for cog in cogs:

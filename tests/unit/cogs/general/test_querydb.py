@@ -6,7 +6,6 @@ from unittest.mock import AsyncMock, MagicMock
 
 import disnake
 import pytest
-from disnake.ext import commands
 
 from nightscout_backup_bot.cogs.general.querydb import QueryDBCog
 
@@ -14,7 +13,8 @@ from nightscout_backup_bot.cogs.general.querydb import QueryDBCog
 @pytest.fixture
 def mock_bot() -> MagicMock:
     """Create a mock bot instance."""
-    bot = MagicMock(spec=commands.Bot)
+    bot = MagicMock()
+    bot.latency = 0.045  # 45ms latency
     return bot
 
 
