@@ -32,7 +32,7 @@ class BackupCog(commands.Cog):
         This command is rate-limited to one use per user every 5 minutes.
         It can only be used in the designated backup channel.
         """
-        await inter.response.defer(ephemeral=True)
+        await inter.response.defer(ephemeral=False)
 
         if not isinstance(inter.channel, disnake.TextChannel):
             await inter.followup.send(
@@ -41,7 +41,22 @@ class BackupCog(commands.Cog):
             )
             return
 
-        await self.backup_service.execute_backup(inter.channel)
+        # Immediately clear 'thinking' state and guide user to thread
+        await inter.followup.send(
+            "Backup started! Progress and download link will be posted in the thread.", ephemeral=False
+        )
+
+        try:
+            result = await self.backup_service.execute_backup(inter.channel)
+            if not result.get("success"):
+                await inter.followup.send("❌ Backup failed. Please check logs or try again.", ephemeral=False)
+            else:
+                await inter.followup.send(
+                    "✅ Backup completed successfully!",
+                    ephemeral=False,
+                )
+        except Exception as e:
+            await inter.followup.send(f"❌ Backup failed: {str(e)}", ephemeral=False)
 
 
 def setup(bot: NightScoutBackupBot) -> None:

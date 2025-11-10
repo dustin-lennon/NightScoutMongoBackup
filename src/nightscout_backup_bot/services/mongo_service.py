@@ -14,24 +14,21 @@ logger = StructuredLogger("services.mongo")
 
 
 class MongoService:
-    """Service for MongoDB Atlas operations."""
-
     def __init__(self) -> None:
-        """Initialize MongoDB service."""
-        self.client: AsyncIOMotorClient[dict[str, Any]] | None = None
-        self.db: AsyncIOMotorDatabase[dict[str, Any]] | None = None
+        self.client: AsyncIOMotorClient[Any] | None = None
+        self.db: AsyncIOMotorDatabase[Any] | None = None
 
     async def connect(self) -> None:
-        """Establish connection to MongoDB Atlas."""
+        """
+        Establish connection to MongoDB Atlas and set self.client and self.db.
+        """
         try:
-            logger.info("Connecting to MongoDB Atlas", host=settings.mongo_host, database=settings.mongo_db)
             self.client = AsyncIOMotorClient(
                 settings.mongo_connection_string,
                 serverSelectionTimeoutMS=5000,
                 connectTimeoutMS=5000,
             )
             self.db = self.client[settings.mongo_db]
-
             # Verify connection
             await self.client.admin.command("ping")
             logger.info("Successfully connected to MongoDB Atlas")
@@ -39,9 +36,100 @@ class MongoService:
             logger.error("Failed to connect to MongoDB", error=str(e))
             raise
 
+    async def dump_database(self, backups_dir: str) -> dict[str, Any]:
+        """
+        Perform a mongodump of the database and compress the output using CompressionService.
+
+        Args:
+            output_path: Path (without extension) for output archive.
+
+        Returns:
+            Dict with dump stats and archive path.
+        """
+        import asyncio
+        import os
+        import shutil
+        import tarfile
+        from datetime import datetime
+        from pathlib import Path
+
+        from .compression_service import CompressionService
+
+        backup_date = datetime.now().strftime("%Y%m%d")
+        backup_folder_name = f"dexcom_{backup_date}"
+        backup_folder_path = os.path.join(backups_dir, backup_folder_name)
+        os.makedirs(backup_folder_path, exist_ok=True)
+        dump_cmd = [
+            "mongodump",
+            f"--uri={settings.mongo_connection_string}",
+            f"--db={settings.mongo_db}",
+            f"--out={backup_folder_path}",
+        ]
+        # Extract value from CompressionMethod enum for display
+        compression_method_value = (
+            settings.compression_method.value
+            if hasattr(settings.compression_method, "value")
+            else str(settings.compression_method)
+        )
+        stats: dict[str, Any] = {
+            "collections": 0,  # int
+            "documents": 0,  # int (not used here)
+            "original_size": "N/A",
+            "compressed_size": "N/A",
+            "compression_method": compression_method_value,
+        }
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *dump_cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            _stdout, stderr = await proc.communicate()
+            if proc.returncode != 0:
+                logger.error("mongodump failed", error=stderr.decode())
+                raise RuntimeError(f"mongodump failed: {stderr.decode()}")
+
+            # Count collections
+            for _root, _dirs, files in os.walk(backup_folder_path):
+                for file in files:
+                    if file.endswith(".bson"):
+                        stats["collections"] += 1
+
+            # Compress the backup folder
+            archive_base = os.path.join(backups_dir, backup_folder_name)
+            if settings.compression_method == "brotli":
+                archive_path = Path(archive_base + ".tar.br")
+                tar_path = archive_base + ".tar"
+                with tarfile.open(tar_path, "w") as tar:
+                    tar.add(backup_folder_path, arcname=backup_folder_name)
+                stats["original_size"] = CompressionService.format_size(os.path.getsize(tar_path))
+                await CompressionService.compress_brotli(Path(tar_path), archive_path)
+                stats["compressed_size"] = CompressionService.format_size(archive_path.stat().st_size)
+                os.remove(tar_path)
+            else:
+                archive_path = Path(archive_base + ".tar.gz")
+                tar_path = archive_base + ".tar"
+                with tarfile.open(tar_path, "w") as tar:
+                    tar.add(backup_folder_path, arcname=backup_folder_name)
+                stats["original_size"] = CompressionService.format_size(os.path.getsize(tar_path))
+                await CompressionService.compress_gzip(Path(tar_path), archive_path)
+                stats["compressed_size"] = CompressionService.format_size(archive_path.stat().st_size)
+                os.remove(tar_path)
+
+            logger.info("Database dumped and compressed", archive_path=str(archive_path), stats=stats)
+
+            # Clean up backup folder after upload
+            shutil.rmtree(backup_folder_path)
+            # Archive will be deleted by caller after S3 upload
+            return {**stats, "archive_path": str(archive_path)}
+            # Connection is now handled by connect()
+        except Exception as e:
+            logger.error("Failed to connect to MongoDB", error=str(e))
+            raise
+
     async def disconnect(self) -> None:
         """Close MongoDB connection."""
-        if self.client:
+        if self.client is not None:
             self.client.close()
             logger.info("Disconnected from MongoDB Atlas")
 
@@ -64,10 +152,10 @@ class MongoService:
         try:
             # Get collection names if not specified
             if collection_names is None:
-                collection_names = await self.db.list_collection_names()
-                logger.info("Exporting all collections", count=len(collection_names))
+                collection_names = list(await self.db.list_collection_names())
             else:
-                logger.info("Exporting specified collections", collections=collection_names)
+                collection_names = list(collection_names)
+            logger.info("Exporting collections", count=len(collection_names))
 
             export_data: dict[str, Any] = {
                 "metadata": {
@@ -81,8 +169,8 @@ class MongoService:
             total_documents = 0
 
             for collection_name in collection_names:
-                collection = self.db[collection_name]
-                documents = await collection.find().to_list(length=None)
+                collection = self.db[collection_name]  # type: ignore[index]
+                documents = await collection.find().to_list(length=None)  # type: ignore[no-untyped-call]
 
                 export_data["collections"][collection_name] = documents
                 total_documents += len(documents)
@@ -137,9 +225,9 @@ class MongoService:
             raise ValueError("Not connected to MongoDB. Call connect() first.")
 
         try:
-            stats = await self.db.command("dbStats")
+            stats: dict[str, Any] = await self.db.command("dbStats")
             logger.debug("Retrieved database stats", db=settings.mongo_db)
-            return dict(stats)
+            return stats
         except Exception as e:
             logger.error("Failed to get database stats", error=str(e))
             raise
