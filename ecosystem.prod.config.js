@@ -10,7 +10,7 @@ module.exports = {
       args: 'run nightscout-backup-bot',
       cwd: path.resolve(__dirname),
       exec_mode: 'fork',
-      interpreter: path.resolve(__dirname) + '/.venv/bin/python3',
+      interpreter: 'none',
       instances: 1,
       autorestart: true,
 	  watch: false,

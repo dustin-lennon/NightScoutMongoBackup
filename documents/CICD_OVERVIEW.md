@@ -260,7 +260,7 @@ pm2 status
 # On Linode server
 cd /opt/nightscout-backup-bot
 git checkout <previous-commit-hash>
-pm2 reload ecosystem.config.js --env production --only nightscout-backup-bot
+pm2 reload ecosystem.prod.config.js
 ```
 
 ### Automated Rollback:

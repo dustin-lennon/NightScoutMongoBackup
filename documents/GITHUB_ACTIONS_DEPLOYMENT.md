@@ -217,7 +217,7 @@ git checkout <previous-commit-hash>
 poetry install --no-dev
 
 # Restart the bot
-pm2 reload ecosystem.config.js --only nightscout-backup-bot --env production
+pm2 reload ecosystem.prod.config.js
 ```
 
 ## Troubleshooting

@@ -96,18 +96,18 @@ fi
         exit 1
     fi
 
-    # Update ecosystem.config.js with current path
-    if [ -f "$REPO_PATH/ecosystem.config.js" ]; then
+    # Update ecosystem.prod.config.js with current path
+    if [ -f "$REPO_PATH/ecosystem.prod.config.js" ]; then
         # Create backup
-        cp "$REPO_PATH/ecosystem.config.js" "$REPO_PATH/ecosystem.config.js.bak"
+        cp "$REPO_PATH/ecosystem.prod.config.js" "$REPO_PATH/ecosystem.prod.config.js.bak"
 
         # Update path
-        sed -i.tmp "s|cwd: '.*'|cwd: '$REPO_PATH'|g" "$REPO_PATH/ecosystem.config.js"
-        rm -f "$REPO_PATH/ecosystem.config.js.tmp"
+        sed -i.tmp "s|cwd: '.*'|cwd: '$REPO_PATH'|g" "$REPO_PATH/ecosystem.prod.config.js"
+        rm -f "$REPO_PATH/ecosystem.prod.config.js.tmp"
 
-        echo -e "${GREEN}✅ Updated ecosystem.config.js${NC}"
+        echo -e "${GREEN}✅ Updated ecosystem.prod.config.js${NC}"
     else
-        echo -e "${RED}❌ ecosystem.config.js not found${NC}"
+        echo -e "${RED}❌ ecosystem.prod.config.js not found${NC}"
         exit 1
     fi
 
@@ -115,7 +115,7 @@ fi
     echo ""
     echo "Starting bot with PM2..."
     pm2 delete nightscout-backup-bot 2>/dev/null || true
-    pm2 start "$REPO_PATH/ecosystem.config.js --only nightscout-backup-bot --env production"
+    pm2 start "$REPO_PATH/ecosystem.prod.config.js"
 
     echo ""
     echo -e "${GREEN}✅ Bot started with PM2${NC}"

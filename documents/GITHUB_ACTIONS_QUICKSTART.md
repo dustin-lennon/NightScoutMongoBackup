@@ -140,7 +140,7 @@ git log --oneline -10
 git checkout HEAD~1
 
 # Restart bot
-pm2 reload ecosystem.config.js --only nightscout-backup-bot --env production
+pm2 reload ecosystem.prod.config.js
 ```
 
 ---
@@ -203,7 +203,7 @@ cd /opt/nightscout-backup-bot
 poetry install --no-interaction --only main
 
 # Restart
-pm2 restart nightscout-backup-bot --only nightscout-backup-bot --env production
+pm2 restart nightscout-backup-bot
 ```
 
 ---
