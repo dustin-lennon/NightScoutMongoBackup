@@ -156,8 +156,7 @@ NIGHTSCOUT_PM2_CMD=npx pm2
 # Discord Bot - Managed locally in dev, can be SSH in prod
 # -----------------------------------------------------------------
 # PM2 app name for the bot itself.
-# Recommended names: nightscout-backup-bot-dev, nightscout-backup-bot-prod
-BOT_PM2_APP_NAME=nightscout-backup-bot-dev
+BOT_PM2_APP_NAME=nightscout-backup-bot
 # Execution mode for bot commands: "local" or "ssh"
 # - "local": Commands run on the machine where the bot is running (for dev)
 # - "ssh": Commands are sent to a remote server (for managing prod bot from dev)

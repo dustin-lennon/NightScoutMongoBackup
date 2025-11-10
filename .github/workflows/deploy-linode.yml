@@ -67,7 +67,7 @@ jobs:
 
             # Restart the service with PM2
             echo "🔄 Restarting application..."
-            pm2 reload ecosystem.config.js --update-env
+            pm2 reload ecosystem.config.js --env production --only nightscout-backup-bot
 
             # Wait for health check
             echo "⏳ Waiting for application to start..."
@@ -75,8 +75,8 @@ jobs:
 
             # Check status
             echo "✅ Checking application status..."
-            pm2 status nightscout-backup-bot-prod
-            pm2 logs nightscout-backup-bot-prod --lines 20 --nostream
+            pm2 status nightscout-backup-bot
+            pm2 logs nightscout-backup-bot --lines 20 --nostream
 
             echo "✅ Deployment complete!"
           EOF
@@ -91,7 +91,7 @@ jobs:
             cd ${DEPLOY_PATH}
 
             # Check if bot is online
-            pm2 describe nightscout-backup-bot-prod | grep "status" || exit 1
+            pm2 describe nightscout-backup-bot | grep "status" || exit 1
 
             echo "✅ Application is running"
           EOF

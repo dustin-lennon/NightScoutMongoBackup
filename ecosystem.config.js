@@ -5,8 +5,7 @@ const path = require('path');
 module.exports = {
   apps: [
     {
-      // Development Config
-      name: 'nightscout-backup-bot-dev',
+      name: 'nightscout-backup-bot',
       script: 'poetry',
       args: 'run nightscout-backup-bot',
       cwd: path.resolve(__dirname),
@@ -16,33 +15,18 @@ module.exports = {
       autorestart: true,
       watch: ['src/'],
       max_memory_restart: '500M',
+      error_file: './logs/error.log',
+      out_file: './logs/output.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      merge_logs: true,
       env: {
         NODE_ENV: 'development',
+        // Add other development environment variables here
       },
-      error_file: './logs/error.log',
-      out_file: './logs/output.log',
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
-      merge_logs: true,
-    },
-    {
-      // Production Config
-      name: 'nightscout-backup-bot-prod',
-      script: 'poetry',
-      args: 'run nightscout-backup-bot',
-      cwd: '~/NightScoutMongoBackup',
-      exec_mode: 'fork',
-      interpreter: '/bin/sh',
-      instances: 1,
-      autorestart: true,
-      watch: false,
-      max_memory_restart: '500M',
-      env: {
+      env_production: {
         NODE_ENV: 'production',
-      },
-      error_file: './logs/error.log',
-      out_file: './logs/output.log',
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
-      merge_logs: true,
-    },
-  ],
+        // Add other production environment variables here
+      }
+    }
+  ]
 };

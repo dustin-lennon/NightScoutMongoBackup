@@ -59,10 +59,10 @@ pm2 status
 pm2 logs
 
 # Restart
-pm2 restart nightscout-backup-bot-prod
+pm2 restart nightscout-backup-bot
 
 # Stop
-pm2 stop nightscout-backup-bot-prod
+pm2 stop nightscout-backup-bot
 
 # Monitoring dashboard
 pm2 monit
@@ -74,7 +74,7 @@ pm2 monit
 cd ~/NightScoutMongoBackup
 git pull origin python3
 poetry install --only main
-pm2 restart nightscout-backup-bot-prod
+pm2 restart nightscout-backup-bot
 ```
 
 ### Troubleshooting
@@ -140,7 +140,7 @@ NIGHTSCOUT_PM2_SSH_USER=
 NIGHTSCOUT_PM2_SSH_HOST=
 NIGHTSCOUT_PM2_SSH_KEY_PATH=
 NIGHTSCOUT_PM2_CMD=npx pm2
-BOT_PM2_APP_NAME=nightscout-backup-bot-prod
+BOT_PM2_APP_NAME=nightscout-backup-bot
 BOT_PM2_MODE=local
 BOT_PM2_CMD=npx pm2
 BOT_PM2_SSH_USER=
@@ -294,7 +294,7 @@ ssh nightscout-bot@your-linode-ip
 cd ~/NightScoutMongoBackup
 git pull origin python3
 poetry install --only main
-pm2 restart nightscout-backup-bot-prod
+pm2 restart nightscout-backup-bot
 pm2 logs
 ```
 

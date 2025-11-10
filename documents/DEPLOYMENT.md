@@ -118,15 +118,6 @@ nano .env
 # - Backup settings
 ```
 
-**For dotenv-vault:**
-```bash
-# If using .env.me, just copy it
-cp .env.me .env
-
-# Add Discord/MongoDB credentials
-nano .env
-```
-
 ### 5. Update PM2 Configuration
 
 ```bash
@@ -142,8 +133,7 @@ const path = require('path');
 module.exports = {
   apps: [
     {
-      // Development Config
-      name: 'nightscout-backup-bot-dev',
+      name: 'nightscout-backup-bot',
       script: 'poetry',
       args: 'run nightscout-backup-bot',
       cwd: path.resolve(__dirname),
@@ -153,35 +143,20 @@ module.exports = {
       autorestart: true,
       watch: ['src/'],
       max_memory_restart: '500M',
+      error_file: './logs/error.log',
+      out_file: './logs/output.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      merge_logs: true,
       env: {
         NODE_ENV: 'development',
+        // Add other development environment variables here
       },
-      error_file: './logs/error.log',
-      out_file: './logs/output.log',
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
-      merge_logs: true,
-    },
-    {
-      // Production Config
-      name: 'nightscout-backup-bot-prod',
-      script: 'poetry',
-      args: 'run nightscout-backup-bot',
-      cwd: '/home/nightscout-bot/NightScoutMongoBackup',
-      exec_mode: 'fork',
-      interpreter: '/bin/sh',
-      instances: 1,
-      autorestart: true,
-      watch: false,
-      max_memory_restart: '500M',
-      env: {
+      env_production: {
         NODE_ENV: 'production',
-      },
-      error_file: './logs/error.log',
-      out_file: './logs/output.log',
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
-      merge_logs: true,
-    },
-  ],
+        // Add other production environment variables here
+      }
+    }
+  ]
 };
 ```
 
@@ -195,13 +170,13 @@ mkdir -p ~/NightScoutMongoBackup/logs
 
 ```bash
 # Start with PM2
-pm2 start ecosystem.config.js
+pm2 start ecosystem.config.js --only nightscout-backup-bot --env production
 
 # Check status
 pm2 status
 
 # View logs
-pm2 logs nightscout-backup-bot-prod
+pm2 logs nightscout-backup-bot
 
 # Monitor in real-time
 pm2 monit
@@ -211,7 +186,7 @@ pm2 monit
 
 ```bash
 # Generate startup script
-pm2 startup systemd -u nightscout-bot --hp /home/nightscout-bot
+pm2 startup systemd -u user --hp /path/to/nightscout-bot
 
 # Run the command it outputs (as root)
 exit  # Exit to root
@@ -235,7 +210,7 @@ pm2 status
 pm2 logs --lines 50
 
 # Test restart
-pm2 restart nightscout-backup-bot-prod
+pm2 restart nightscout-backup-bot
 
 # Reboot server and verify auto-start
 sudo reboot
@@ -262,10 +237,10 @@ git pull origin python3
 poetry install --only main
 
 # Restart bot (zero downtime)
-pm2 reload nightscout-backup-bot-prod
+pm2 reload nightscout-backup-bot
 
 # Or full restart
-pm2 restart nightscout-backup-bot-prod
+pm2 restart nightscout-backup-bot
 
 # Check logs
 pm2 logs --lines 50
@@ -285,7 +260,7 @@ pm2 monit
 pm2 list
 
 # Detailed info
-pm2 show nightscout-backup-bot-prod
+pm2 show nightscout-backup-bot
 
 # Logs
 pm2 logs
