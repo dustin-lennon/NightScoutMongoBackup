@@ -21,12 +21,12 @@ module.exports = {
       merge_logs: true,
       env: {
         NODE_ENV: 'development',
-		watch: ['src/'],
+        watch: ['src/'],
         // Add other development environment variables here
       },
       env_production: {
         NODE_ENV: 'production',
-		watch: false
+        watch: false
         // Add other production environment variables here
       }
     }
