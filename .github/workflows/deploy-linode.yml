@@ -1,0 +1,110 @@
+name: Deploy to Linode
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**'
+      - '!.github/workflows/deploy-linode.yml'
+
+jobs:
+  deploy:
+    name: Deploy to Linode Server
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.LINODE_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.LINODE_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Linode
+        env:
+          LINODE_HOST: ${{ secrets.LINODE_HOST }}
+          LINODE_USER: ${{ secrets.LINODE_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/opt/nightscout-backup-bot' }}
+        run: |
+          ssh ${LINODE_USER}@${LINODE_HOST} << 'EOF'
+            set -e
+
+            echo "📦 Starting deployment to ${DEPLOY_PATH}..."
+
+            # Navigate to deployment directory
+            cd ${DEPLOY_PATH}
+
+            # Pull latest changes
+            echo "🔄 Pulling latest changes..."
+            git fetch origin
+            git checkout main
+            git pull origin main
+
+            # Activate poetry environment and install dependencies
+            echo "📚 Installing dependencies..."
+            export PATH="$HOME/.local/bin:$PATH"
+            poetry install --no-interaction --no-root --only main
+
+            # Restart the service with PM2
+            echo "🔄 Restarting application..."
+            pm2 reload ecosystem.config.js --update-env
+
+            # Wait for health check
+            echo "⏳ Waiting for application to start..."
+            sleep 10
+
+            # Check status
+            echo "✅ Checking application status..."
+            pm2 status nightscout-backup-bot-prod
+            pm2 logs nightscout-backup-bot-prod --lines 20 --nostream
+
+            echo "✅ Deployment complete!"
+          EOF
+
+      - name: Verify Deployment
+        env:
+          LINODE_HOST: ${{ secrets.LINODE_HOST }}
+          LINODE_USER: ${{ secrets.LINODE_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/opt/nightscout-backup-bot' }}
+        run: |
+          ssh ${LINODE_USER}@${LINODE_HOST} << 'EOF'
+            cd ${DEPLOY_PATH}
+
+            # Check if bot is online
+            pm2 describe nightscout-backup-bot-prod | grep "status" || exit 1
+
+            echo "✅ Application is running"
+          EOF
+
+      - name: Notify on Success
+        if: success()
+        run: |
+          echo "✅ Deployment to ${{ github.event.inputs.environment || 'production' }} successful!"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
+
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "❌ Deployment to ${{ github.event.inputs.environment || 'production' }} failed!"
+          echo "Please check the logs above for details."

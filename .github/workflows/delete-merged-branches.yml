@@ -2,7 +2,7 @@ name: Delete Merged Feature, Hotfix, and Bugfix Branches
 
 on:
   pull_request:
-    types: [closed]
+    types: [ closed ]
 
 jobs:
   delete-merged-branches:
