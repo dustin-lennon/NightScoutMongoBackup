@@ -1,6 +1,5 @@
-// PM2 ecosystem configuration for production and development
+// PM2 ecosystem configuration for development
 
-const { watch } = require('fs');
 const path = require('path');
 
 module.exports = {
@@ -12,6 +11,7 @@ module.exports = {
       cwd: path.resolve(__dirname),
       exec_mode: 'fork',
       interpreter: '/bin/sh',
+      watch: ['src/'],
       instances: 1,
       autorestart: true,
       max_memory_restart: '500M',
@@ -21,13 +21,7 @@ module.exports = {
       merge_logs: true,
       env: {
         NODE_ENV: 'development',
-        watch: ['src/'],
         // Add other development environment variables here
-      },
-      env_production: {
-        NODE_ENV: 'production',
-        watch: false
-        // Add other production environment variables here
       }
     }
   ]
