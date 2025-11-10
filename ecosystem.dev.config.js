@@ -1,5 +1,6 @@
 // PM2 ecosystem configuration for development
 
+const { watch } = require('fs');
 const path = require('path');
 
 module.exports = {
@@ -21,6 +22,7 @@ module.exports = {
       merge_logs: true,
       env: {
         NODE_ENV: 'development',
+		watch: ['src/'],
         // Add other development environment variables here
       }
     }
