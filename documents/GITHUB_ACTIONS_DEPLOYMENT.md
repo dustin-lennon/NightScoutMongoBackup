@@ -54,7 +54,7 @@ cp .env.example .env
 nano .env  # Edit with your credentials
 
 # Start the bot
-pm2 start ecosystem.config.js --only nightscout-backup-bot --env production
+pm2 start ecosystem.prod.config.js
 pm2 save
 pm2 startup  # Follow the instructions to set up autostart
 ```

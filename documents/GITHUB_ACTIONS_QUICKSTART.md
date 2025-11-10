@@ -17,7 +17,7 @@ nano .env
 # Add your Discord, MongoDB, and AWS credentials
 
 # Start the bot
-pm2 start ecosystem.config.js --only nightscout-backup-bot --env production
+pm2 start ecosystem.prod.config.js
 pm2 save
 pm2 startup  # Run the command it outputs
 ```
