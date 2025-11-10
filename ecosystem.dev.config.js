@@ -1,6 +1,5 @@
 // PM2 ecosystem configuration for development
 
-const { watch } = require('fs');
 const path = require('path');
 
 module.exports = {
