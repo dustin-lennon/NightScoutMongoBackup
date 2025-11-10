@@ -65,6 +65,10 @@ jobs:
             export PATH="$HOME/.local/bin:$PATH"
             poetry install --no-interaction --no-root --only main
 
+            # 🧠 Make sure Node & PM2 are available
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
             # Restart the service with PM2
             echo "🔄 Restarting application..."
             pm2 reload ecosystem.prod.config.js
@@ -88,6 +92,10 @@ jobs:
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/opt/nightscout-backup-bot' }}
         run: |
           ssh ${LINODE_USER}@${LINODE_HOST} "DEPLOY_PATH='${DEPLOY_PATH}' bash -s" << 'EOF'
+            # 🧠 Make sure Node & PM2 are available
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
             cd "${DEPLOY_PATH}"
 
             # Check if bot is online
