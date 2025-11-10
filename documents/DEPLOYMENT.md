@@ -122,10 +122,10 @@ nano .env
 
 ```bash
 # Edit ecosystem.config.js
-nano ecosystem.config.js
+nano ecosystem.prod.config.js
 ```
 
-Example `ecosystem.config.js` for both development and production:
+Example `ecosystem.prod.config.js` for production:
 
 ```javascript
 const path = require('path');
@@ -138,10 +138,43 @@ module.exports = {
       args: 'run nightscout-backup-bot',
       cwd: path.resolve(__dirname),
       exec_mode: 'fork',
-      interpreter: '/bin/sh',
+      interpreter: 'none',
       instances: 1,
       autorestart: true,
+	  watch: false,
+      max_memory_restart: '500M',
+      error_file: './logs/error.log',
+      out_file: './logs/output.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      merge_logs: true,
+      env: {
+        NODE_ENV: 'production',
+        // Add other development environment variables here
+      }
+    }
+  ]
+};
+```
+
+__Interpreter is set to none on Linux machines and how poetry is installed__
+
+Example `ecosystem.dev.config.js` for development:
+
+```
+const path = require('path');
+
+module.exports = {
+  apps: [
+    {
+      name: 'nightscout-backup-bot',
+      script: 'poetry',
+      args: 'run nightscout-backup-bot',
+      cwd: path.resolve(__dirname),
+      exec_mode: 'fork',
+      interpreter: '/bin/sh',
       watch: ['src/'],
+      instances: 1,
+      autorestart: true,
       max_memory_restart: '500M',
       error_file: './logs/error.log',
       out_file: './logs/output.log',
@@ -150,15 +183,13 @@ module.exports = {
       env: {
         NODE_ENV: 'development',
         // Add other development environment variables here
-      },
-      env_production: {
-        NODE_ENV: 'production',
-        // Add other production environment variables here
       }
     }
   ]
 };
 ```
+
+__Interpreter is set to `/bin/sh` due to how Poetry is installed on macOS__
 
 ### 6. Create Logs Directory
 
@@ -170,7 +201,7 @@ mkdir -p ~/NightScoutMongoBackup/logs
 
 ```bash
 # Start with PM2
-pm2 start ecosystem.config.js --only nightscout-backup-bot --env production
+pm2 start ecosystem.prod.config.js
 
 # Check status
 pm2 status

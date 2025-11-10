@@ -288,9 +288,9 @@ Set via `COMPRESSION_METHOD` environment variable.
 # Install PM2 globally
 npm install -g pm2
 
-# Update ecosystem.config.js with your path
+# Update ecosystem.prod.config.js with your path
 # Start bot
-pm2 start ecosystem.config.js --env production
+pm2 start ecosystem.prod.config.js
 
 # Save PM2 configuration
 pm2 save

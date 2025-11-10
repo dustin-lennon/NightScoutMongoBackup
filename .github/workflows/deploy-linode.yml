@@ -67,7 +67,7 @@ jobs:
 
             # Restart the service with PM2
             echo "🔄 Restarting application..."
-            pm2 reload ecosystem.config.js --env production --only nightscout-backup-bot
+            pm2 reload ecosystem.prod.config.js
 
             # Wait for health check
             echo "⏳ Waiting for application to start..."
