@@ -114,17 +114,17 @@ fi
     # Start with PM2
     echo ""
     echo "Starting bot with PM2..."
-    pm2 delete nightscout-backup-bot-prod 2>/dev/null || true
-    pm2 start "$REPO_PATH/ecosystem.config.js"
+    pm2 delete nightscout-backup-bot 2>/dev/null || true
+    pm2 start "$REPO_PATH/ecosystem.config.js --only nightscout-backup-bot --env production"
 
     echo ""
     echo -e "${GREEN}✅ Bot started with PM2${NC}"
     echo ""
     echo "Useful commands:"
-    echo "  pm2 status                    - Check status"
-    echo "  pm2 logs                      - View logs"
-    echo "  pm2 restart nightscout-backup-bot-prod - Restart"
-    echo "  pm2 stop nightscout-backup-bot-prod    - Stop"
+    echo "  pm2 status                        - Check status"
+    echo "  pm2 logs                          - View logs"
+    echo "  pm2 restart nightscout-backup-bot - Restart"
+    echo "  pm2 stop nightscout-backup-bot    - Stop"
     echo ""
     echo "To enable auto-start on boot:"
     echo "  pm2 startup systemd -u $USER --hp $HOME"

@@ -32,7 +32,7 @@ This project uses GitHub Actions for continuous integration and deployment. Here
    - Reload bot with PM2
    - Verify deployment success
 
-**Note**: Deployments only happen when `python3` is merged to `main` via PR.
+**Note**: Deployments only happen when `develop` is merged to `main` via PR.
 
 ### Manual Triggers:
 
@@ -45,8 +45,8 @@ This project uses GitHub Actions for continuous integration and deployment. Here
 
 ```yaml
 Triggers:
-  - Pull requests to python3/develop
-  - Push to python3
+  - Pull requests to develop, main
+  - Push to develop, feature/*, bugfix/*, hotfix/*, release/*
   - Manual dispatch
 
 Steps:
@@ -65,8 +65,8 @@ Steps:
 
 ```yaml
 Triggers:
-  - Pull requests to python3/develop
-  - Push to python3
+  - Pull requests to develop, main
+  - Push to develop, feature/*, bugfix/*, hotfix/*, release/*
   - Manual dispatch
 
 Steps:
@@ -120,7 +120,7 @@ feature/* (Feature development branches)
 
 1. Create feature branch from `development`
    ```bash
-   git checkout python3
+   git checkout develop
    git pull
    git checkout -b feature/my-new-feature
    ```
@@ -132,18 +132,18 @@ feature/* (Feature development branches)
    git push origin feature/my-new-feature
    ```
 
-3. Open PR to `development`
+3. Open PR to `develop`
    - CI checks run automatically
    - Tests must pass
    - Linting must pass
    - Security scans must pass
    - Review and approval
 
-4. Merge PR to `development`
+4. Merge PR to `develop`
    - Changes are integrated
    - No automatic deployment yet
 
-5. When ready for production, create PR from `development` to `main`
+5. When ready for production, create PR from `develop` to `main`
    - Final review
    - Merge to `main`
    - **Automatic deployment to Linode** 🚀
@@ -244,7 +244,7 @@ Features:
 
 SSH into Linode and check PM2:
 ```bash
-pm2 logs nightscout-backup-bot-prod --lines 100
+pm2 logs nightscout-backup-bot --lines 100
 pm2 status
 ```
 
@@ -260,7 +260,7 @@ pm2 status
 # On Linode server
 cd /opt/nightscout-backup-bot
 git checkout <previous-commit-hash>
-pm2 reload ecosystem.config.js
+pm2 reload ecosystem.config.js --env production --only nightscout-backup-bot
 ```
 
 ### Automated Rollback:
@@ -351,10 +351,10 @@ cd /opt/nightscout-backup-bot
 pm2 status
 
 # View errors
-pm2 logs nightscout-backup-bot-prod --err --lines 50
+pm2 logs nightscout-backup-bot --err --lines 50
 
 # Manually restart
-pm2 restart nightscout-backup-bot-prod
+pm2 restart nightscout-backup-bot
 ```
 
 ### Deployment Succeeds But Bot Has Errors
@@ -371,7 +371,7 @@ ssh user@linode "cat /opt/nightscout-backup-bot/.env"
 ssh user@linode "nano /opt/nightscout-backup-bot/.env"
 
 # Restart bot
-ssh user@linode "cd /opt/nightscout-backup-bot-prod && pm2 restart nightscout-backup-bot-prod"
+ssh user@linode "cd /opt/nightscout-backup-bot && pm2 restart nightscout-backup-bot"
 ```
 
 ## Additional Resources

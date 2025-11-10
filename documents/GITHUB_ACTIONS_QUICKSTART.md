@@ -17,7 +17,7 @@ nano .env
 # Add your Discord, MongoDB, and AWS credentials
 
 # Start the bot
-pm2 start ecosystem.config.js
+pm2 start ecosystem.config.js --only nightscout-backup-bot --env production
 pm2 save
 pm2 startup  # Run the command it outputs
 ```
@@ -51,17 +51,17 @@ cat ~/.ssh/linode_deploy
 ### Step 4: Test Deployment
 
 ```bash
-# Make a small change on python3 branch
+# Make a small change on develop branch
 echo "# Test change" >> README_PYTHON.md
 git add README_PYTHON.md
 git commit -m "test: verify CI pipeline"
-git push origin python3
+git push origin develop
 
 # This runs CI checks but does NOT deploy
 
 # When ready to deploy, merge to main
 git checkout main
-git merge python3
+git merge develop
 git push origin main
 
 # Now deployment triggers:
@@ -76,7 +76,7 @@ git push origin main
 
 **Deployments only happen on push to `main` branch**
 
-When you merge `python3` → `main`:
+When you merge `develop` → `main`:
 1. ✅ Code checkout
 2. ✅ SSH into Linode
 3. ✅ Pull latest changes from `main`
@@ -84,7 +84,7 @@ When you merge `python3` → `main`:
 5. ✅ Reload bot with PM2
 6. ✅ Verify it's running
 
-**Development on `python3` branch**:
+**Development on `develop` branch**:
 - ✅ Runs tests
 - ✅ Runs linting
 - ❌ Does NOT deploy
@@ -117,10 +117,10 @@ https://github.com/dustin-lennon/NightScoutMongoBackup/actions
 ssh root@YOUR_LINODE_IP
 
 # Live logs
-pm2 logs nightscout-backup-bot-prod
+pm2 logs nightscout-backup-bot
 
 # Last 100 lines
-pm2 logs nightscout-backup-bot-prod --lines 100
+pm2 logs nightscout-backup-bot --lines 100
 
 # Status
 pm2 status
@@ -140,7 +140,7 @@ git log --oneline -10
 git checkout HEAD~1
 
 # Restart bot
-pm2 reload ecosystem.config.js
+pm2 reload ecosystem.config.js --only nightscout-backup-bot --env production
 ```
 
 ---
@@ -187,7 +187,7 @@ cd /opt/nightscout-backup-bot
 ls -la .env
 
 # View errors
-pm2 logs nightscout-backup-bot-prod --err --lines 50
+pm2 logs nightscout-backup-bot --err --lines 50
 ```
 
 ### ❌ Deployment Succeeds But Bot Crashes
@@ -203,7 +203,7 @@ cd /opt/nightscout-backup-bot
 poetry install --no-interaction --only main
 
 # Restart
-pm2 restart nightscout-backup-bot-prod
+pm2 restart nightscout-backup-bot --only nightscout-backup-bot --env production
 ```
 
 ---

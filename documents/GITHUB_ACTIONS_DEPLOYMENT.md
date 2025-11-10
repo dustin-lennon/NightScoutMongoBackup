@@ -7,9 +7,9 @@ This guide explains how to set up automated deployment to your Linode server usi
 The deployment workflow automatically deploys to Linode when:
 - Code is pushed to the `main` branch (production)
 - Manual deployment is triggered via GitHub Actions UI
-- Pull requests are merged from `python3` to `main`
+- Pull requests are merged from `develop` to `main`
 
-**Important**: Pushes to `python3` branch run CI tests but do NOT deploy. Only merges to `main` trigger deployment.
+**Important**: Pushes to `develop` branch run CI tests but do NOT deploy. Only merges to `main` trigger deployment.
 
 ## Prerequisites
 
@@ -54,7 +54,7 @@ cp .env.example .env
 nano .env  # Edit with your credentials
 
 # Start the bot
-pm2 start ecosystem.config.js
+pm2 start ecosystem.config.js --only nightscout-backup-bot --env production
 pm2 save
 pm2 startup  # Follow the instructions to set up autostart
 ```
@@ -143,7 +143,7 @@ git push origin main
 **Or use Pull Request** (recommended):
 ```bash
 # Push to python3
-git push origin python3
+git push origin develop
 
 # Create PR on GitHub: python3 → main
 # Review and merge
@@ -190,13 +190,13 @@ SSH into your Linode and check PM2 logs:
 
 ```bash
 # View live logs
-pm2 logs nightscout-backup-bot-prod
+pm2 logs nightscout-backup-bot
 
 # View last 100 lines
-pm2 logs nightscout-backup-bot-prod --lines 100
+pm2 logs nightscout-backup-bot --lines 100
 
 # View only errors
-pm2 logs nightscout-backup-bot-prod --err
+pm2 logs nightscout-backup-bot --err
 ```
 
 ## Rollback
@@ -217,7 +217,7 @@ git checkout <previous-commit-hash>
 poetry install --no-dev
 
 # Restart the bot
-pm2 reload ecosystem.config.js
+pm2 reload ecosystem.config.js --only nightscout-backup-bot --env production
 ```
 
 ## Troubleshooting
@@ -275,7 +275,7 @@ cd /opt/nightscout-backup-bot
 ls -la .env
 
 # View PM2 logs for errors
-pm2 logs nightscout-backup-bot-prod --err --lines 50
+pm2 logs nightscout-backup-bot --err --lines 50
 
 # Manually test startup
 poetry run python -m nightscout_backup_bot
