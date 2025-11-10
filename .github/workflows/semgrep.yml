@@ -13,7 +13,7 @@ jobs:
       contents: read
       pull-requests: write
       checks: write
-    conteainer:
+    container:
       image: semgrep/semgrep:latest
     if: (github.actor != 'dependabot[bot]')
 
