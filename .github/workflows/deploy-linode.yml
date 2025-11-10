@@ -46,7 +46,7 @@ jobs:
           LINODE_USER: ${{ secrets.LINODE_USER }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/opt/nightscout-backup-bot' }}
         run: |
-          ssh ${LINODE_USER}@${LINODE_HOST} "DEPLOY_PATH='${DEPLOY_PATH}' bash -s << 'EOF'
+          ssh ${LINODE_USER}@${LINODE_HOST} "DEPLOY_PATH='${DEPLOY_PATH}' bash -s" << 'EOF'
             set -e
 
             echo "📦 Starting deployment to ${DEPLOY_PATH}..."
@@ -87,7 +87,7 @@ jobs:
           LINODE_USER: ${{ secrets.LINODE_USER }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/opt/nightscout-backup-bot' }}
         run: |
-          ssh ${LINODE_USER}@${LINODE_HOST} "DEPLOY_PATH='${DEPLOY_PATH}' bash -s << 'EOF'
+          ssh ${LINODE_USER}@${LINODE_HOST} "DEPLOY_PATH='${DEPLOY_PATH}' bash -s" << 'EOF'
             cd "${DEPLOY_PATH}"
 
             # Check if bot is online
