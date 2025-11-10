@@ -6,10 +6,15 @@ permissions:
 on:
   workflow_dispatch:
   pull_request:
-    branches: [ python3, develop ]
+    branches: [ develop, main ]
     types: [ opened, synchronize, reopened ]
   push:
-    branches: [ python3 ]
+    branches:
+      - develop
+      - feature/*
+      - bugfix/*
+      - hotfix/*
+      - release/*
 
 jobs:
   lint:
@@ -42,9 +47,6 @@ jobs:
       - name: Install dependencies
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction --no-root
-
-      - name: Install project
-        run: poetry install --no-interaction
 
       - name: Run Black (Format Check)
         run: poetry run black --check src tests
