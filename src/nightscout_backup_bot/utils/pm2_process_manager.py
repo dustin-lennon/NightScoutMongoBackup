@@ -95,8 +95,11 @@ async def _run_local(pm2_cmd: str, args: list[str]) -> tuple[int, str, str]:
     else:
         cmd_list = [pm2_cmd, *args]
     cmd_str = " ".join(shlex.quote(part) for part in cmd_list)
-    logger.info("Executing local PM2 command", command=cmd_str)
-    return await _run(cmd_str)
+
+    # Run in a login shell for parity with SSH and disable color output
+    full_cmd = f'bash -lc "{cmd_str} --no-color"'
+    logger.info("Executing local PM2 command", command=full_cmd)
+    return await _run(full_cmd)
 
 
 async def _run_ssh(target: ProcessTarget, args: list[str]) -> tuple[int, str, str]:
