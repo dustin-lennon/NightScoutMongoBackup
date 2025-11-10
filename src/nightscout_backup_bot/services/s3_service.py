@@ -43,6 +43,9 @@ class S3Service:
             Public URL of uploaded file.
         """
         try:
+            # Ensure file_path is a Path object
+            if isinstance(file_path, str):
+                file_path = Path(file_path)
             if object_key is None:
                 # Add UUID to make filename unguessable but keep original name
                 unique_id = str(uuid4())[:8]

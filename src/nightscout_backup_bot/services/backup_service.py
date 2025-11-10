@@ -5,7 +5,6 @@ from typing import Any
 
 import disnake
 
-from ..config import settings
 from ..logging_config import StructuredLogger
 from .compression_service import CompressionService
 from .discord_thread_service import DiscordThreadService
@@ -32,99 +31,88 @@ class BackupService:
         collections: list[str] | None = None,
     ) -> dict[str, Any]:
         """
-        Execute full backup workflow with Discord progress updates.
+        Execute full backup workflow with Discord progress updates (mongodump-based).
 
         Args:
             channel: Discord channel for creating progress thread.
-            collections: List of collections to backup. If None, backs up all.
+            collections: (Unused) for compatibility.
 
         Returns:
             Dictionary with backup results and statistics.
         """
-        # Create Discord thread for progress
         thread_service = DiscordThreadService(channel)
         timestamp = datetime.now(UTC).strftime("%m.%d.%Y")
         thread = await thread_service.create_backup_thread(timestamp)
 
         try:
             await thread_service.send_progress(thread, "🔄 Starting backup process...")
-
-            # Step 1: Connect to MongoDB
             await thread_service.send_progress(thread, "🔄 Connecting to MongoDB Atlas...")
-            await self.mongo_service.connect()
+            await self.mongo_service.connect()  # type: ignore[attr-defined]
             await thread_service.send_progress(thread, "✅ Connected to MongoDB Atlas")
 
-            # Step 2: Export data
-            await thread_service.send_progress(thread, "🔄 Exporting data from MongoDB...")
-            export_data = await self.mongo_service.export_collections(collections)
+            # Step 2: Dump database
+            await thread_service.send_progress(thread, "🔄 Dumping MongoDB database...")
+            backup_dir = "backups"
+            dump_stats = await self.mongo_service.dump_database(backup_dir)
 
-            collections_count = export_data["metadata"]["collections_count"]
-            documents_count = export_data["metadata"]["total_documents"]
             await thread_service.send_progress(
                 thread,
-                f"✅ Exported {collections_count} collections ({documents_count:,} documents)",
+                f"✅ Database dumped ({dump_stats['original_size']} uncompressed, {dump_stats['compressed_size']} compressed)",
             )
 
-            # Step 3: Serialize to JSON
-            await thread_service.send_progress(thread, "🔄 Serializing data to JSON...")
-            json_data = self.mongo_service.serialize_to_json(export_data)
-            original_size = len(json_data.encode("utf-8"))
-            original_size_str = CompressionService.format_size(original_size)
-            await thread_service.send_progress(thread, f"✅ Data serialized ({original_size_str})")
-
-            # Step 4: Write to file
-            json_filename = self.file_service.generate_filename("json")
-            json_path = self.file_service.get_backup_path(json_filename)
-            await self.file_service.write_file(json_path, json_data)
-
-            # Step 5: Compress
-            compression_method = settings.compression_method
-            await thread_service.send_progress(
-                thread,
-                f"🔄 Compressing with {compression_method.upper()}...",
-            )
-
-            compressed_filename = f"{json_filename}.{compression_method.split()[0]}"
-            compressed_path = self.file_service.get_backup_path(compressed_filename)
-
-            if compression_method == "gzip":
-                compressed_size = await self.compression_service.compress_gzip(json_path, compressed_path)
-            else:  # brotli
-                compressed_size = await self.compression_service.compress_brotli(json_path, compressed_path)
-
-            compressed_size_str = CompressionService.format_size(compressed_size)
-            reduction = ((original_size - compressed_size) / original_size) * 100
-            await thread_service.send_progress(
-                thread,
-                f"✅ Compressed ({compressed_size_str} - {reduction:.1f}% reduction)",
-            )
-
-            # Step 6: Upload to S3
+            # Step 3: Upload to S3
             await thread_service.send_progress(thread, "🔄 Uploading to AWS S3...")
-            download_url = await self.s3_service.upload_file(compressed_path)
+            download_url = await self.s3_service.upload_file(dump_stats["archive_path"])
             await thread_service.send_progress(thread, "✅ Uploaded to S3")
 
-            # Step 7: Cleanup local files
+            # Step 4: Cleanup local files
             await thread_service.send_progress(thread, "🔄 Cleaning up local files...")
-            await self.file_service.delete_file(json_path)
-            await self.file_service.delete_file(compressed_path)
+            await self.file_service.delete_file(dump_stats["archive_path"])
             await thread_service.send_progress(thread, "✅ Local files cleaned up")
 
-            # Step 8: Send completion message
-            stats: dict[str, str] = {
-                "collections": str(collections_count),
-                "documents": f"{documents_count:,}",
+            # Step 5: Send completion message
+            def parse_size(size_str: str) -> float:
+                # Parse size like "12.3MB" to bytes
+                try:
+                    if size_str.endswith("MB"):
+                        return float(size_str[:-2]) * 1024 * 1024
+                    elif size_str.endswith("KB"):
+                        return float(size_str[:-2]) * 1024
+                    elif size_str.endswith("GB"):
+                        return float(size_str[:-2]) * 1024 * 1024 * 1024
+                    elif size_str.endswith("B"):
+                        return float(size_str[:-1])
+                except Exception:
+                    return 0.0
+                return 0.0
+
+            original_size_str = str(dump_stats.get("original_size", "N/A"))
+            compressed_size_str = str(dump_stats.get("compressed_size", "N/A"))
+            original_size_bytes = parse_size(original_size_str)
+            compressed_size_bytes = parse_size(compressed_size_str)
+            compression_ratio = (
+                f"{(1 - compressed_size_bytes / original_size_bytes) * 100:.1f}%"
+                if original_size_bytes > 0 and compressed_size_bytes > 0
+                else "N/A"
+            )
+            compression_method = dump_stats.get("compression_method", None)
+            if compression_method:
+                compression_method = str(compression_method).upper()
+            else:
+                compression_method = "N/A"
+            stats: dict[str, str | int | float] = {
+                "collections": str(dump_stats.get("collections", "N/A")),
+                "documents": "N/A",  # Not counted in mongodump
                 "original_size": original_size_str,
                 "compressed_size": compressed_size_str,
-                "compression_ratio": f"{reduction:.1f}%",
-                "compression_method": compression_method.upper(),
+                "compression_ratio": compression_ratio,
+                "compression_method": compression_method,
             }
             await thread_service.send_completion(thread, download_url, stats)
 
             logger.info(
                 "Backup completed successfully",
-                collections=collections_count,
-                documents=documents_count,
+                collections=stats["collections"],
                 url=download_url,
             )
 
@@ -142,8 +130,7 @@ class BackupService:
             raise
 
         finally:
-            # Always disconnect from MongoDB
-            await self.mongo_service.disconnect()
+            await self.mongo_service.disconnect()  # type: ignore[attr-defined]
 
     async def test_connections(self) -> dict[str, bool]:
         """
@@ -156,8 +143,8 @@ class BackupService:
 
         # Test MongoDB
         try:
-            await self.mongo_service.connect()
-            await self.mongo_service.disconnect()
+            await self.mongo_service.connect()  # type: ignore[attr-defined]
+            await self.mongo_service.disconnect()  # type: ignore[attr-defined]
             results["mongodb"] = True
             logger.info("MongoDB connection test: PASS")
         except Exception as e:

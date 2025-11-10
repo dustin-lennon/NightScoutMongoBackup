@@ -74,7 +74,7 @@ class FileService:
             logger.error("Failed to write file", path=str(filepath), error=str(e))
             raise
 
-    async def delete_file(self, filepath: Path) -> None:
+    async def delete_file(self, filepath: Path | str) -> None:
         """
         Delete file if it exists.
 
@@ -82,6 +82,9 @@ class FileService:
             filepath: Path to file to delete.
         """
         try:
+            # Ensure filepath is a Path object
+            if isinstance(filepath, str):
+                filepath = Path(filepath)
             if filepath.exists():
                 filepath.unlink()
                 logger.info("Deleted file", path=str(filepath))
