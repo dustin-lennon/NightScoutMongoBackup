@@ -37,7 +37,7 @@ class SystemCog(commands.Cog):
             "My blood sugar is low... rebooting to get some glucose.",
             "Recalibrating the sensors... I'll be back online shortly.",
         ]
-        await inter.response.send_message(random.choice(restart_messages), ephemeral=True)
+        await inter.response.send_message(random.choice(restart_messages), ephemeral=False)
         logger.info("Bot restart initiated by owner", user_id=inter.author.id)
         await asyncio.sleep(1)
         await self.bot.close()
@@ -58,7 +58,7 @@ class SystemCog(commands.Cog):
             "My pump is out of insulin. See you later.",
             "Looks like my CGM sensor expired. Shutting down.",
         ]
-        await inter.response.send_message(random.choice(kill_messages), ephemeral=True)
+        await inter.response.send_message(random.choice(kill_messages), ephemeral=False)
 
         logger.info("Bot kill command initiated by owner", user_id=inter.author.id)
 
