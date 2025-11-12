@@ -14,6 +14,9 @@ from nightscout_backup_bot.utils.collection_name_helper import get_internal_coll
 
 logger = StructuredLogger(__name__)
 
+FAILED_TO_CONNECT = "Failed to connect to MongoDB"
+DATE_VALIDATION_ERROR = "Date validation error"
+
 
 class QueryDBCog(commands.Cog):
     """Database query commands for administrators."""
@@ -217,7 +220,7 @@ class QueryDBCog(commands.Cog):
             await self.mongo_service.connect()
 
             if self.mongo_service.db is None:
-                raise ValueError("Failed to connect to MongoDB")
+                raise ValueError(FAILED_TO_CONNECT)
 
             collection = self.mongo_service.db["entries"]
 
@@ -242,7 +245,7 @@ class QueryDBCog(commands.Cog):
             await inter.followup.send(embed=embed)
 
         except ValueError as e:
-            logger.error("Date validation error", error=str(e), user_id=inter.author.id)
+            logger.error(DATE_VALIDATION_ERROR, error=str(e), user_id=inter.author.id)
             await inter.followup.send(f"❌ {str(e)}", ephemeral=True)
 
         except Exception as e:
@@ -277,7 +280,7 @@ class QueryDBCog(commands.Cog):
             await self.mongo_service.connect()
 
             if self.mongo_service.db is None:
-                raise ValueError("Failed to connect to MongoDB")
+                raise ValueError(FAILED_TO_CONNECT)
 
             collection = self.mongo_service.db["devicestatus"]
 
@@ -302,7 +305,7 @@ class QueryDBCog(commands.Cog):
             await inter.followup.send(embed=embed)
 
         except ValueError as e:
-            logger.error("Date validation error", error=str(e), user_id=inter.author.id)
+            logger.error(DATE_VALIDATION_ERROR, error=str(e), user_id=inter.author.id)
             await inter.followup.send(f"❌ {str(e)}", ephemeral=True)
 
         except Exception as e:
@@ -337,7 +340,7 @@ class QueryDBCog(commands.Cog):
             await self.mongo_service.connect()
 
             if self.mongo_service.db is None:
-                raise ValueError("Failed to connect to MongoDB")
+                raise ValueError(FAILED_TO_CONNECT)
 
             collection = self.mongo_service.db["treatments"]
 
@@ -362,7 +365,7 @@ class QueryDBCog(commands.Cog):
             await inter.followup.send(embed=embed)
 
         except ValueError as e:
-            logger.error("Date validation error", error=str(e), user_id=inter.author.id)
+            logger.error(DATE_VALIDATION_ERROR, error=str(e), user_id=inter.author.id)
             await inter.followup.send(f"❌ {str(e)}", ephemeral=True)
 
         except Exception as e:
