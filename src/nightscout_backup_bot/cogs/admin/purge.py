@@ -1,5 +1,7 @@
 """Admin command cog for purging MongoDB collections."""
 
+from typing import Any
+
 import disnake
 from disnake.ext import commands
 from disnake.ui import button  # type: ignore
@@ -29,10 +31,11 @@ class PurgeCog(commands.Cog):
     async def purge_collection(
         self,
         inter: disnake.ApplicationCommandInteraction[NightScoutBackupBot],
-        collection: str = commands.Param(  # type: ignore[assignment]
-            description="Collection to purge (e.g., entries, devicestatus, treatments)"
+        collection: Any = commands.Param(  # type: ignore
+            choices=["Entries", "Device Status", "Treatments"],
+            description="Collection to purge (Entries, Device Status, Treatments)",
         ),
-        date: str = commands.Param(description="Date to purge from (YYYY-MM-DD)"),  # type: ignore[assignment]
+        date: str = commands.Param(description="Date to query (YYYY-MM-DD format, e.g., 2024-01-01)"),  # type: ignore
     ) -> None:
         """
         Purge documents from a MongoDB collection by date, with confirmation.
@@ -50,9 +53,10 @@ class PurgeCog(commands.Cog):
             if self.mongo_service.db is None:
                 raise ValueError("Failed to connect to MongoDB")
 
-            collection_obj = self.mongo_service.db[collection]
+            collection_name = str(collection)
+            collection_obj = self.mongo_service.db[collection_name]
             filter_query = {"date": {"$gte": purge_date}}
-            count = await self.mongo_service.simulate_delete_many(collection, filter_query)
+            count = await self.mongo_service.simulate_delete_many(collection_name, filter_query)
 
             embed = disnake.Embed(
                 title="Confirm Purge",
@@ -63,13 +67,13 @@ class PurgeCog(commands.Cog):
             class ConfirmView(disnake.ui.View):
                 def __init__(self) -> None:
                     super().__init__(timeout=30)
-                    self.value: bool | None = None
+                    self.value: bool = False
 
                 @button(label="Yes", style=disnake.ButtonStyle.danger)
                 async def yes(
                     self,
                     button: disnake.ui.Button,  # type: ignore
-                    interaction: disnake.MessageInteraction[NightScoutBackupBot],
+                    interaction: disnake.MessageInteraction,  # type: ignore
                 ) -> None:
                     self.value = True
                     self.stop()
@@ -79,7 +83,7 @@ class PurgeCog(commands.Cog):
                 async def no(
                     self,
                     button: disnake.ui.Button,  # type: ignore
-                    interaction: disnake.MessageInteraction[NightScoutBackupBot],
+                    interaction: disnake.MessageInteraction,  # type: ignore
                 ) -> None:
                     self.value = False
                     self.stop()
