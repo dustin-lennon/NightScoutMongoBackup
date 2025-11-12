@@ -120,3 +120,8 @@ class PurgeCog(commands.Cog):
             await inter.followup.send(f"❌ Error: {e}", ephemeral=True)
         finally:
             await self.mongo_service.disconnect()
+
+
+def setup(bot: NightScoutBackupBot) -> None:
+    """Setup function to add cog to bot."""
+    bot.add_cog(PurgeCog(bot))
