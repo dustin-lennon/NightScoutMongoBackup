@@ -30,6 +30,9 @@ class PurgeCog(commands.Cog):
         """
         Purge documents from a MongoDB collection after confirmation.
         """
+        await self._purge_collection_impl(inter)
+
+    async def _purge_collection_impl(self, inter: disnake.ApplicationCommandInteraction[NightScoutBackupBot]) -> None:
         await inter.response.send_message("Which collection do you want to purge?", ephemeral=False)
 
         def check_collection(msg: disnake.Message) -> bool:
