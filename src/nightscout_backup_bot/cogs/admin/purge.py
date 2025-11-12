@@ -55,8 +55,8 @@ class PurgeCog(commands.Cog):
             date_str = date_msg.content.strip()
             try:
                 purge_date = validate_yyyy_mm_dd(date_str)
-            except DateValidationError as err:
-                await inter.followup.send(f"❌ {err}", ephemeral=False)
+            except DateValidationError:
+                await inter.followup.send("❌ bad date", ephemeral=False)
                 return
         except TimeoutError:
             await inter.followup.send("Timed out waiting for date input.", ephemeral=False)
