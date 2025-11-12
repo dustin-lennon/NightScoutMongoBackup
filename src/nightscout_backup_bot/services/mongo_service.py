@@ -13,6 +13,9 @@ from ..logging_config import StructuredLogger
 logger = StructuredLogger("services.mongo")
 
 
+NOT_CONNECTED_ERROR = "Not connected to MongoDB. Call connect() first."
+
+
 class MongoService:
     def __init__(self) -> None:
         self.client: AsyncIOMotorClient[Any] | None = None
@@ -147,7 +150,7 @@ class MongoService:
             ValueError: If not connected to database.
         """
         if self.db is None:
-            raise ValueError("Not connected to MongoDB. Call connect() first.")
+            raise ValueError(NOT_CONNECTED_ERROR)
 
         try:
             # Get collection names if not specified
@@ -222,7 +225,7 @@ class MongoService:
             Dictionary with database statistics.
         """
         if self.db is None:
-            raise ValueError("Not connected to MongoDB. Call connect() first.")
+            raise ValueError(NOT_CONNECTED_ERROR)
 
         try:
             stats: dict[str, Any] = await self.db.command("dbStats")
@@ -238,7 +241,7 @@ class MongoService:
         Returns the count of documents that would be deleted.
         """
         if self.db is None or self.client is None:
-            raise ValueError("Not connected to MongoDB. Call connect() first.")
+            raise ValueError(NOT_CONNECTED_ERROR)
 
         collection = self.db[collection_name]
         session = await self.client.start_session()
