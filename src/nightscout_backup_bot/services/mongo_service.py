@@ -231,3 +231,25 @@ class MongoService:
         except Exception as e:
             logger.error("Failed to get database stats", error=str(e))
             raise
+
+    async def simulate_delete_many(self, collection_name: str, filter_query: dict[str, Any]) -> int:
+        """
+        Simulate a delete_many operation in a transaction that is aborted.
+        Returns the count of documents that would be deleted.
+        """
+        if self.db is None or self.client is None:
+            raise ValueError("Not connected to MongoDB. Call connect() first.")
+
+        collection = self.db[collection_name]
+        session = await self.client.start_session()
+
+        try:
+            async with session.start_transaction():
+                result = await collection.delete_many(filter_query, session=session)
+                await session.abort_transaction()
+            await session.end_session()
+            return int(result.deleted_count)
+        except Exception as e:
+            await session.end_session()
+            logger.error("Failed to simulate delete_many", error=str(e))
+            raise

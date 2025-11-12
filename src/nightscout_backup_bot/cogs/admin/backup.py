@@ -6,6 +6,7 @@ from disnake.ext import commands
 from nightscout_backup_bot.bot import NightScoutBackupBot
 from nightscout_backup_bot.logging_config import StructuredLogger
 from nightscout_backup_bot.services.backup_service import BackupService
+from nightscout_backup_bot.utils.checks import is_owner
 
 BACKUP_COMMAND_NAME = "backup"
 
@@ -25,6 +26,7 @@ class BackupCog(commands.Cog):
         description="Creates a backup of the Nightscout database.",
     )
     @commands.cooldown(1, 300, type=commands.BucketType.user)
+    @is_owner()
     async def backup(self, inter: disnake.ApplicationCommandInteraction[NightScoutBackupBot]) -> None:
         """
         Create a backup of the Nightscout database.
