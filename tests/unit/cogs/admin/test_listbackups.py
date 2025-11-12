@@ -15,7 +15,6 @@ def mock_bot() -> MagicMock:
     return bot
 
 
-@pytest.mark.asyncio
 def test_listbackups_command_success(mock_bot: MagicMock) -> None:
     mock_inter = MagicMock()
     from unittest.mock import AsyncMock
@@ -58,7 +57,6 @@ def test_listbackups_command_success(mock_bot: MagicMock) -> None:
         assert kwargs["embed"].title == "📦 Backup Files"
 
 
-@pytest.mark.asyncio
 def test_listbackups_command_empty(mock_bot: MagicMock) -> None:
     mock_inter = MagicMock()
     from unittest.mock import AsyncMock

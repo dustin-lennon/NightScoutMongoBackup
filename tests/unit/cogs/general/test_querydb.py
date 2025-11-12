@@ -342,3 +342,91 @@ class TestQueryDBCog:  # type: ignore[misc]
 
         # Verify correct handler was called
         querydb_cog._handle_treatments.assert_called_once_with(mock_interaction, "2024-01-15")
+
+    @pytest.mark.asyncio
+    async def test_handle_device_status_invalid_date(self, querydb_cog: Any, mock_interaction: Any) -> None:
+        """Test device status query with invalid date."""
+        querydb_cog.mongo_service.connect = AsyncMock()
+        querydb_cog.mongo_service.disconnect = AsyncMock()
+
+        await querydb_cog._handle_device_status(mock_interaction, "invalid-date")
+
+        mock_interaction.followup.send.assert_called_once()
+        call_args = mock_interaction.followup.send.call_args
+        assert "❌" in str(call_args)
+
+    @pytest.mark.asyncio
+    async def test_handle_device_status_connection_error(self, querydb_cog: Any, mock_interaction: Any) -> None:
+        """Test device status query with connection error."""
+        querydb_cog.mongo_service.connect = AsyncMock(side_effect=Exception("Connection failed"))
+        querydb_cog.mongo_service.disconnect = AsyncMock()
+
+        await querydb_cog._handle_device_status(mock_interaction, "2024-01-15")
+
+        mock_interaction.followup.send.assert_called_once()
+        call_args = mock_interaction.followup.send.call_args
+        assert "embed" in call_args.kwargs
+
+    @pytest.mark.asyncio
+    async def test_handle_device_status_no_results(self, querydb_cog: Any, mock_interaction: Any) -> None:
+        """Test device status query with no results."""
+        mock_collection = MagicMock()
+        mock_cursor = MagicMock()
+        mock_cursor.to_list = AsyncMock(return_value=[])
+        mock_collection.find = MagicMock(return_value=mock_cursor)
+        mock_cursor.sort = MagicMock(return_value=mock_cursor)
+        mock_cursor.limit = MagicMock(return_value=mock_cursor)
+
+        querydb_cog.mongo_service.connect = AsyncMock()
+        querydb_cog.mongo_service.disconnect = AsyncMock()
+        querydb_cog.mongo_service.db = {"devicestatus": mock_collection}
+
+        await querydb_cog._handle_device_status(mock_interaction, "2024-01-15")
+
+        mock_interaction.followup.send.assert_called_once()
+        call_args = mock_interaction.followup.send.call_args
+        assert "No device status found" in str(call_args)
+
+    @pytest.mark.asyncio
+    async def test_handle_treatments_invalid_date(self, querydb_cog: Any, mock_interaction: Any) -> None:
+        """Test treatments query with invalid date."""
+        querydb_cog.mongo_service.connect = AsyncMock()
+        querydb_cog.mongo_service.disconnect = AsyncMock()
+
+        await querydb_cog._handle_treatments(mock_interaction, "invalid-date")
+
+        mock_interaction.followup.send.assert_called_once()
+        call_args = mock_interaction.followup.send.call_args
+        assert "❌" in str(call_args)
+
+    @pytest.mark.asyncio
+    async def test_handle_treatments_connection_error(self, querydb_cog: Any, mock_interaction: Any) -> None:
+        """Test treatments query with connection error."""
+        querydb_cog.mongo_service.connect = AsyncMock(side_effect=Exception("Connection failed"))
+        querydb_cog.mongo_service.disconnect = AsyncMock()
+
+        await querydb_cog._handle_treatments(mock_interaction, "2024-01-15")
+
+        mock_interaction.followup.send.assert_called_once()
+        call_args = mock_interaction.followup.send.call_args
+        assert "embed" in call_args.kwargs
+
+    @pytest.mark.asyncio
+    async def test_handle_treatments_no_results(self, querydb_cog: Any, mock_interaction: Any) -> None:
+        """Test treatments query with no results."""
+        mock_collection = MagicMock()
+        mock_cursor = MagicMock()
+        mock_cursor.to_list = AsyncMock(return_value=[])
+        mock_collection.find = MagicMock(return_value=mock_cursor)
+        mock_cursor.sort = MagicMock(return_value=mock_cursor)
+        mock_cursor.limit = MagicMock(return_value=mock_cursor)
+
+        querydb_cog.mongo_service.connect = AsyncMock()
+        querydb_cog.mongo_service.disconnect = AsyncMock()
+        querydb_cog.mongo_service.db = {"treatments": mock_collection}
+
+        await querydb_cog._handle_treatments(mock_interaction, "2024-01-15")
+
+        mock_interaction.followup.send.assert_called_once()
+        call_args = mock_interaction.followup.send.call_args
+        assert "No treatments found" in str(call_args)

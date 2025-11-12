@@ -10,8 +10,12 @@ from nightscout_backup_bot.bot import NightScoutBackupBot
 from nightscout_backup_bot.logging_config import StructuredLogger
 from nightscout_backup_bot.services.mongo_service import MongoService
 from nightscout_backup_bot.utils.checks import is_owner
+from nightscout_backup_bot.utils.collection_name_helper import get_internal_collection_name
 
 logger = StructuredLogger(__name__)
+
+FAILED_TO_CONNECT = "Failed to connect to MongoDB"
+DATE_VALIDATION_ERROR = "Date validation error"
 
 
 class QueryDBCog(commands.Cog):
@@ -216,7 +220,7 @@ class QueryDBCog(commands.Cog):
             await self.mongo_service.connect()
 
             if self.mongo_service.db is None:
-                raise ValueError("Failed to connect to MongoDB")
+                raise ValueError(FAILED_TO_CONNECT)
 
             collection = self.mongo_service.db["entries"]
 
@@ -241,7 +245,7 @@ class QueryDBCog(commands.Cog):
             await inter.followup.send(embed=embed)
 
         except ValueError as e:
-            logger.error("Date validation error", error=str(e), user_id=inter.author.id)
+            logger.error(DATE_VALIDATION_ERROR, error=str(e), user_id=inter.author.id)
             await inter.followup.send(f"❌ {str(e)}", ephemeral=True)
 
         except Exception as e:
@@ -254,7 +258,7 @@ class QueryDBCog(commands.Cog):
             await inter.followup.send(embed=embed, ephemeral=True)
 
         finally:
-            await self.mongo_service.disconnect()
+            self.mongo_service.disconnect()
 
     async def _handle_device_status(
         self,
@@ -276,7 +280,7 @@ class QueryDBCog(commands.Cog):
             await self.mongo_service.connect()
 
             if self.mongo_service.db is None:
-                raise ValueError("Failed to connect to MongoDB")
+                raise ValueError(FAILED_TO_CONNECT)
 
             collection = self.mongo_service.db["devicestatus"]
 
@@ -301,7 +305,7 @@ class QueryDBCog(commands.Cog):
             await inter.followup.send(embed=embed)
 
         except ValueError as e:
-            logger.error("Date validation error", error=str(e), user_id=inter.author.id)
+            logger.error(DATE_VALIDATION_ERROR, error=str(e), user_id=inter.author.id)
             await inter.followup.send(f"❌ {str(e)}", ephemeral=True)
 
         except Exception as e:
@@ -314,7 +318,7 @@ class QueryDBCog(commands.Cog):
             await inter.followup.send(embed=embed, ephemeral=True)
 
         finally:
-            await self.mongo_service.disconnect()
+            self.mongo_service.disconnect()
 
     async def _handle_treatments(
         self,
@@ -336,7 +340,7 @@ class QueryDBCog(commands.Cog):
             await self.mongo_service.connect()
 
             if self.mongo_service.db is None:
-                raise ValueError("Failed to connect to MongoDB")
+                raise ValueError(FAILED_TO_CONNECT)
 
             collection = self.mongo_service.db["treatments"]
 
@@ -361,7 +365,7 @@ class QueryDBCog(commands.Cog):
             await inter.followup.send(embed=embed)
 
         except ValueError as e:
-            logger.error("Date validation error", error=str(e), user_id=inter.author.id)
+            logger.error(DATE_VALIDATION_ERROR, error=str(e), user_id=inter.author.id)
             await inter.followup.send(f"❌ {str(e)}", ephemeral=True)
 
         except Exception as e:
@@ -374,7 +378,7 @@ class QueryDBCog(commands.Cog):
             await inter.followup.send(embed=embed, ephemeral=True)
 
         finally:
-            await self.mongo_service.disconnect()
+            self.mongo_service.disconnect()
 
     @commands.slash_command(
         name="querydb",
@@ -407,14 +411,8 @@ class QueryDBCog(commands.Cog):
             date=date,
         )
 
-        # Map collection display names to internal names
-        collection_map = {
-            "Entries": "entries",
-            "Device Status": "devicestatus",
-            "Treatments": "treatments",
-        }
-
-        internal_collection = collection_map.get(collection)
+        # Use get_internal_collection_name to map display names to internal names
+        internal_collection = get_internal_collection_name(collection)
 
         if internal_collection == "entries":
             await self._handle_entries(inter, date)

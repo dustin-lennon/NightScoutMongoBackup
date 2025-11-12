@@ -13,6 +13,9 @@ from ..logging_config import StructuredLogger
 logger = StructuredLogger("services.mongo")
 
 
+NOT_CONNECTED_ERROR = "Not connected to MongoDB. Call connect() first."
+
+
 class MongoService:
     def __init__(self) -> None:
         self.client: AsyncIOMotorClient[Any] | None = None
@@ -127,7 +130,7 @@ class MongoService:
             logger.error("Failed to connect to MongoDB", error=str(e))
             raise
 
-    async def disconnect(self) -> None:
+    def disconnect(self) -> None:
         """Close MongoDB connection."""
         if self.client is not None:
             self.client.close()
@@ -147,7 +150,7 @@ class MongoService:
             ValueError: If not connected to database.
         """
         if self.db is None:
-            raise ValueError("Not connected to MongoDB. Call connect() first.")
+            raise ValueError(NOT_CONNECTED_ERROR)
 
         try:
             # Get collection names if not specified
@@ -222,7 +225,7 @@ class MongoService:
             Dictionary with database statistics.
         """
         if self.db is None:
-            raise ValueError("Not connected to MongoDB. Call connect() first.")
+            raise ValueError(NOT_CONNECTED_ERROR)
 
         try:
             stats: dict[str, Any] = await self.db.command("dbStats")
@@ -230,4 +233,26 @@ class MongoService:
             return stats
         except Exception as e:
             logger.error("Failed to get database stats", error=str(e))
+            raise
+
+    async def simulate_delete_many(self, collection_name: str, filter_query: dict[str, Any]) -> int:
+        """
+        Simulate a delete_many operation in a transaction that is aborted.
+        Returns the count of documents that would be deleted.
+        """
+        if self.db is None or self.client is None:
+            raise ValueError(NOT_CONNECTED_ERROR)
+
+        collection = self.db[collection_name]
+        session = await self.client.start_session()
+
+        try:
+            async with session.start_transaction():
+                result = await collection.delete_many(filter_query, session=session)
+                await session.abort_transaction()
+            await session.end_session()
+            return int(result.deleted_count)
+        except Exception as e:
+            await session.end_session()
+            logger.error("Failed to simulate delete_many", error=str(e))
             raise
