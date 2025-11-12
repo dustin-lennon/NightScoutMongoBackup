@@ -26,40 +26,23 @@ class PurgeCog(commands.Cog):
         description="Purge documents from a MongoDB collection by date (admin only)",
     )
     @is_owner()
-    async def purge_collection(self, inter: disnake.ApplicationCommandInteraction[NightScoutBackupBot]) -> None:
+    async def purge_collection(
+        self,
+        inter: disnake.ApplicationCommandInteraction[NightScoutBackupBot],
+        collection: str = commands.Param(  # type: ignore[assignment]
+            description="Collection to purge (e.g., entries, devicestatus, treatments)"
+        ),
+        date: str = commands.Param(description="Date to purge from (YYYY-MM-DD)"),  # type: ignore[assignment]
+    ) -> None:
         """
-        Purge documents from a MongoDB collection after confirmation.
+        Purge documents from a MongoDB collection by date, with confirmation.
         """
-        await self._purge_collection_impl(inter)
-
-    async def _purge_collection_impl(self, inter: disnake.ApplicationCommandInteraction[NightScoutBackupBot]) -> None:
-        await inter.response.send_message("Which collection do you want to purge?", ephemeral=False)
-
-        def check_collection(msg: disnake.Message) -> bool:
-            return bool(msg.author.id == inter.author.id and msg.channel.id == inter.channel.id)
+        await inter.response.defer()
 
         try:
-            collection_msg = await self.bot.wait_for("message", check=check_collection, timeout=60)
-            collection_name = collection_msg.content.strip()
-        except TimeoutError:
-            await inter.followup.send("Timed out waiting for collection name.", ephemeral=True)
-            return
-
-        await inter.followup.send("From what date (YYYY-MM-DD) do you want to delete records?", ephemeral=False)
-
-        def check_date(msg: disnake.Message) -> bool:
-            return bool(msg.author.id == inter.author.id and msg.channel.id == inter.channel.id)
-
-        try:
-            date_msg = await self.bot.wait_for("message", check=check_date, timeout=60)
-            date_str = date_msg.content.strip()
-            try:
-                purge_date = validate_yyyy_mm_dd(date_str)
-            except DateValidationError:
-                await inter.followup.send("❌ bad date", ephemeral=False)
-                return
-        except TimeoutError:
-            await inter.followup.send("Timed out waiting for date input.", ephemeral=False)
+            purge_date = validate_yyyy_mm_dd(date)
+        except DateValidationError:
+            await inter.send("❌ Invalid date format. Use YYYY-MM-DD.", ephemeral=True)
             return
 
         try:
@@ -67,13 +50,13 @@ class PurgeCog(commands.Cog):
             if self.mongo_service.db is None:
                 raise ValueError("Failed to connect to MongoDB")
 
-            collection = self.mongo_service.db[collection_name]
+            collection_obj = self.mongo_service.db[collection]
             filter_query = {"date": {"$gte": purge_date}}
-            count = await self.mongo_service.simulate_delete_many(collection_name, filter_query)
+            count = await self.mongo_service.simulate_delete_many(collection, filter_query)
 
             embed = disnake.Embed(
                 title="Confirm Purge",
-                description=f"{count} documents from the `{collection_name}` will be deleted. Continue?",
+                description=f"{count} documents from the `{collection}` collection will be deleted. Continue?",
                 color=disnake.Color.red(),
             )
 
@@ -103,21 +86,19 @@ class PurgeCog(commands.Cog):
                     await interaction.response.send_message("Deletion cancelled.", ephemeral=True)
 
             view = ConfirmView()
-            await inter.followup.send(embed=embed, view=view, ephemeral=False)
+            await inter.send(embed=embed, view=view, ephemeral=False)
             await view.wait()
 
             if not view.value:
-                await inter.followup.send("Deletion cancelled.", ephemeral=False)
+                await inter.send("Deletion cancelled.", ephemeral=False)
                 return
 
-            result = await collection.delete_many(filter_query)
+            result = await collection_obj.delete_many(filter_query)
             deleted_count = getattr(result, "deleted_count", 0)
-            await inter.followup.send(
-                f"Deleted {deleted_count} documents from the {collection_name} collection.", ephemeral=False
-            )
+            await inter.send(f"Deleted {deleted_count} documents from the `{collection}` collection.", ephemeral=False)
         except Exception as e:
             logger.error("Error in purge_collection command", error=str(e))
-            await inter.followup.send(f"❌ Error: {e}", ephemeral=True)
+            await inter.send(f"❌ Error: {e}", ephemeral=True)
         finally:
             await self.mongo_service.disconnect()
 
