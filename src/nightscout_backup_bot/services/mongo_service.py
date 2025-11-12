@@ -130,7 +130,7 @@ class MongoService:
             logger.error("Failed to connect to MongoDB", error=str(e))
             raise
 
-    async def disconnect(self) -> None:
+    def disconnect(self) -> None:
         """Close MongoDB connection."""
         if self.client is not None:
             self.client.close()

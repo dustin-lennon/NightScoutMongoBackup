@@ -42,7 +42,7 @@ async def test_connect_failure(mongo_service: MongoService) -> None:
 async def test_disconnect(mongo_service: MongoService, mock_mongo_client: AsyncMock) -> None:
     """Test MongoDB disconnection."""
     mongo_service.client = mock_mongo_client
-    await mongo_service.disconnect()
+    mongo_service.disconnect()
     mock_mongo_client.close.assert_called_once()
 
 
