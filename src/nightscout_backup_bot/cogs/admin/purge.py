@@ -10,6 +10,7 @@ from nightscout_backup_bot.bot import NightScoutBackupBot
 from nightscout_backup_bot.logging_config import StructuredLogger
 from nightscout_backup_bot.services.mongo_service import MongoService
 from nightscout_backup_bot.utils.checks import is_owner
+from nightscout_backup_bot.utils.collection_name_helper import get_internal_collection_name
 from nightscout_backup_bot.utils.date_utils import DateValidationError, validate_yyyy_mm_dd
 
 logger = StructuredLogger(__name__)
@@ -43,7 +44,15 @@ class PurgeCog(commands.Cog):
         await inter.response.defer()
 
         try:
-            purge_date = validate_yyyy_mm_dd(date)
+            purge_date_str = validate_yyyy_mm_dd(date)
+
+            # Convert string to datetime object (validate_yyyy_mm_dd returns datetime)
+            from datetime import datetime
+
+            purge_date = datetime.strptime(purge_date_str, "%Y-%m-%d")
+            date_to_millis = int(purge_date.timestamp() * 1000)
+
+            logger.info("Parsed date for purge", date=date, millis=date_to_millis)
         except DateValidationError:
             await inter.send("❌ Invalid date format. Use YYYY-MM-DD.", ephemeral=True)
             return
@@ -53,9 +62,9 @@ class PurgeCog(commands.Cog):
             if self.mongo_service.db is None:
                 raise ValueError("Failed to connect to MongoDB")
 
-            collection_name = str(collection)
+            collection_name = get_internal_collection_name(str(collection))
             collection_obj = self.mongo_service.db[collection_name]
-            filter_query = {"date": {"$gte": purge_date}}
+            filter_query = {"date": {"$lte": date_to_millis}}
             count = await self.mongo_service.simulate_delete_many(collection_name, filter_query)
 
             embed = disnake.Embed(
@@ -77,7 +86,7 @@ class PurgeCog(commands.Cog):
                 ) -> None:
                     self.value = True
                     self.stop()
-                    await interaction.response.send_message("Proceeding with deletion...", ephemeral=True)
+                    await interaction.response.send_message("Proceeding with deletion...", ephemeral=False)
 
                 @button(label="No", style=disnake.ButtonStyle.secondary)
                 async def no(
@@ -87,19 +96,18 @@ class PurgeCog(commands.Cog):
                 ) -> None:
                     self.value = False
                     self.stop()
-                    await interaction.response.send_message("Deletion cancelled.", ephemeral=True)
+                    await interaction.response.send_message("Deletion cancelled.", ephemeral=False)
 
             view = ConfirmView()
             await inter.send(embed=embed, view=view, ephemeral=False)
             await view.wait()
 
-            if not view.value:
-                await inter.send("Deletion cancelled.", ephemeral=False)
-                return
-
-            result = await collection_obj.delete_many(filter_query)
-            deleted_count = getattr(result, "deleted_count", 0)
-            await inter.send(f"Deleted {deleted_count} documents from the `{collection}` collection.", ephemeral=False)
+            if view.value:
+                result = await collection_obj.delete_many(filter_query)
+                deleted_count = getattr(result, "deleted_count", 0)
+                await inter.send(
+                    f"Deleted {deleted_count} documents from the `{collection}` collection.", ephemeral=False
+                )
         except Exception as e:
             logger.error("Error in purge_collection command", error=str(e))
             await inter.send(f"❌ Error: {e}", ephemeral=True)

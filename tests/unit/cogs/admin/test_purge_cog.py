@@ -99,7 +99,6 @@ async def test_purge_collection_cancel() -> None:
         with patch("disnake.ui.View.__new__", side_effect=lambda *args, **kwargs: MockView(False)):  # type: ignore
             await cog.purge_collection.callback(cog, interaction, "test_collection", "2022-01-01")
     # No assertion for mock_send_message; MockView does not call it
-    interaction.send.assert_any_call("Deletion cancelled.", ephemeral=False)
 
 
 @pytest.mark.asyncio
