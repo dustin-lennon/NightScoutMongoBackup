@@ -10,6 +10,7 @@ from nightscout_backup_bot.bot import NightScoutBackupBot
 from nightscout_backup_bot.logging_config import StructuredLogger
 from nightscout_backup_bot.services.mongo_service import MongoService
 from nightscout_backup_bot.utils.checks import is_owner
+from nightscout_backup_bot.utils.collection_name_helper import get_internal_collection_name
 
 logger = StructuredLogger(__name__)
 
@@ -407,14 +408,8 @@ class QueryDBCog(commands.Cog):
             date=date,
         )
 
-        # Map collection display names to internal names
-        collection_map = {
-            "Entries": "entries",
-            "Device Status": "devicestatus",
-            "Treatments": "treatments",
-        }
-
-        internal_collection = collection_map.get(collection)
+        # Use get_internal_collection_name to map display names to internal names
+        internal_collection = get_internal_collection_name(collection)
 
         if internal_collection == "entries":
             await self._handle_entries(inter, date)
