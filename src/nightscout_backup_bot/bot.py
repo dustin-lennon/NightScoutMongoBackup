@@ -157,6 +157,7 @@ class NightScoutBackupBot(commands.Bot):
             "nightscout_backup_bot.cogs.admin.site",
             "nightscout_backup_bot.cogs.admin.system",
             "nightscout_backup_bot.cogs.admin.thread_management",
+            "nightscout_backup_bot.cogs.admin.purge",
         ]
 
         for cog in cogs:
