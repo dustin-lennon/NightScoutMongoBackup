@@ -112,7 +112,7 @@ class PurgeCog(commands.Cog):
             logger.error("Error in purge_collection command", error=str(e))
             await inter.send(f"❌ Error: {e}", ephemeral=True)
         finally:
-            await self.mongo_service.disconnect()
+            self.mongo_service.disconnect()
 
 
 def setup(bot: NightScoutBackupBot) -> None:

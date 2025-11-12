@@ -258,7 +258,7 @@ class QueryDBCog(commands.Cog):
             await inter.followup.send(embed=embed, ephemeral=True)
 
         finally:
-            await self.mongo_service.disconnect()
+            self.mongo_service.disconnect()
 
     async def _handle_device_status(
         self,
@@ -318,7 +318,7 @@ class QueryDBCog(commands.Cog):
             await inter.followup.send(embed=embed, ephemeral=True)
 
         finally:
-            await self.mongo_service.disconnect()
+            self.mongo_service.disconnect()
 
     async def _handle_treatments(
         self,
@@ -378,7 +378,7 @@ class QueryDBCog(commands.Cog):
             await inter.followup.send(embed=embed, ephemeral=True)
 
         finally:
-            await self.mongo_service.disconnect()
+            self.mongo_service.disconnect()
 
     @commands.slash_command(
         name="querydb",

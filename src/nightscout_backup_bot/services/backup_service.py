@@ -130,7 +130,7 @@ class BackupService:
             raise
 
         finally:
-            await self.mongo_service.disconnect()  # type: ignore[attr-defined]
+            self.mongo_service.disconnect()  # type: ignore[attr-defined]
 
     async def test_connections(self) -> dict[str, bool]:
         """
@@ -144,7 +144,7 @@ class BackupService:
         # Test MongoDB
         try:
             await self.mongo_service.connect()  # type: ignore[attr-defined]
-            await self.mongo_service.disconnect()  # type: ignore[attr-defined]
+            self.mongo_service.disconnect()  # type: ignore[attr-defined]
             results["mongodb"] = True
             logger.info("MongoDB connection test: PASS")
         except Exception as e:
