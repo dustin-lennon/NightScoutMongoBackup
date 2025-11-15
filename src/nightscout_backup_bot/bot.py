@@ -91,10 +91,17 @@ class NightScoutBackupBot(commands.Bot):
                 logger.error("Backup channel not found or not a text channel")
                 return
 
+            # Send start message to main channel
+            await channel.send("Backup started! Progress and download link will be posted in the thread.")
+
             # Execute backup
             result = await self.backup_service.execute_backup(channel)
 
             logger.info("Nightly backup completed", success=result["success"], url=result.get("url"))
+
+            # Send completion message to main channel if successful
+            if result.get("success"):
+                await channel.send("✅ Backup completed successfully!")
 
             # Thread management: archive/delete old threads
             cog = self.get_cog("ThreadManagement")
