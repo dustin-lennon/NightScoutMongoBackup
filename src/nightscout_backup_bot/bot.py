@@ -103,23 +103,31 @@ class NightScoutBackupBot(commands.Bot):
             if result.get("success"):
                 await channel.send("✅ Backup completed successfully!")
 
-            # Thread management: archive/delete old threads
-            cog = self.get_cog("ThreadManagement")
-            if cog:
-                tm_cog = cog  # type: ignore
-                if isinstance(tm_cog, ThreadManagement):
-                    archived_count, deleted_count = await tm_cog.manage_threads_impl(channel)
+                # Thread management: archive/delete old threads
+                cog = self.get_cog("ThreadManagement")
+                logger.debug(
+                    "Loaded cogs:",
+                    cogs=list(self.cogs.keys()),
+                    thread_management_cog_type=str(type(cog)) if cog else None,
+                )
+                if cog:
+                    tm_cog = cog  # type: ignore
+                    if isinstance(tm_cog, ThreadManagement):
+                        archived_count, deleted_count = await tm_cog.manage_threads_impl(channel)
 
-                    # Report results in the backup channel
-                    await channel.send(
-                        f"🧹 Thread management complete.\n"
-                        f"Archived threads: {archived_count}\n"
-                        f"Deleted threads: {deleted_count}"
-                    )
+                        # Report results in the backup channel
+                        await channel.send(
+                            f"🧹 Thread management complete.\n"
+                            f"Archived threads: {archived_count}\n"
+                            f"Deleted threads: {deleted_count}"
+                        )
+                    else:
+                        logger.warning(
+                            "Cog 'ThreadManagement' is not of expected type; skipping thread management.",
+                            actual_type=str(type(tm_cog)),
+                        )
                 else:
-                    logger.warning("Cog 'ThreadManagement' is not of expected type; skipping thread management.")
-            else:
-                logger.warning("ThreadManagement cog not loaded; skipping thread management.")
+                    logger.warning("ThreadManagement cog not loaded; skipping thread management.")
 
         except Exception as e:
             logger.error("Nightly backup failed", error=str(e))
