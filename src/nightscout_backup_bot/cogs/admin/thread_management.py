@@ -49,12 +49,12 @@ class ThreadManagement(commands.Cog):
             if thread.type != disnake.ChannelType.private_thread:
                 continue
             age = now - thread.created_at
-            if thread.archived:
-                continue
+            # Check for deletion first (8+ days), regardless of archived status
             if age.days >= 8:
                 await thread.delete(reason="Download link no longer exists.. removing thread")
                 deleted_count += 1
-            elif age.days >= 1:
+            # Then check for archiving (1+ days), but only if not already archived
+            elif age.days >= 1 and not thread.archived:
                 _ = await thread.edit(archived=True, reason="Archiving backup thread after open 1 day or longer...")
                 archived_count += 1
         return archived_count, deleted_count
