@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 import disnake
 import pytest
 
-from nightscout_backup_bot.cogs.general.querydb import QueryDBCog
+from nightscout_backup_bot.cogs.admin.querydb import QueryDBCog
 
 
 @pytest.fixture

@@ -6,12 +6,15 @@ module.exports = {
   apps: [
     {
       name: 'nightscout-backup-bot',
-      script: 'poetry',
-      args: 'run nightscout-backup-bot',
+    //   script: 'poetry',
+      script: 'launcher.ts',
+    //   args: 'run nightscout-backup-bot',
       cwd: path.resolve(__dirname),
       exec_mode: 'fork',
-      interpreter: '/bin/sh',
-      watch: ['src/'],
+    //   interpreter: '/bin/sh',
+      interpreter: 'bun',
+      watch: ['src/', 'launcher.ts'],
+	  ignore_watch: ["node_modules"],
       instances: 1,
       autorestart: true,
       max_memory_restart: '500M',
@@ -21,7 +24,6 @@ module.exports = {
       merge_logs: true,
       env: {
         NODE_ENV: 'development',
-		watch: ['src/'],
         // Add other development environment variables here
       }
     }

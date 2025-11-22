@@ -2,12 +2,12 @@
 
 import asyncio
 import datetime
-from typing import override
+from collections.abc import Awaitable, Callable
+from typing import cast, override
 
 import disnake
 from disnake.ext import commands, tasks
 
-from nightscout_backup_bot.cogs.admin.thread_management import ThreadManagement
 from nightscout_backup_bot.config import settings
 from nightscout_backup_bot.logging_config import StructuredLogger, setup_logging
 from nightscout_backup_bot.services.backup_service import BackupService
@@ -112,22 +112,24 @@ class NightScoutBackupBot(commands.Bot):
                     cogs=list(self.cogs.keys()),
                     thread_management_cog_type=str(type(cog)) if cog else None,
                 )
-                if cog:
-                    tm_cog = cog  # type: ignore
-                    if isinstance(tm_cog, ThreadManagement):
-                        archived_count, deleted_count = await tm_cog.manage_threads_impl(channel)
+                if cog and hasattr(cog, "manage_threads_impl"):
+                    # Call method directly without isinstance check to avoid circular import
+                    # Using getattr to avoid type checker error; hasattr check ensures safety
+                    method = cast(
+                        Callable[[disnake.TextChannel], Awaitable[tuple[int, int]]],
+                        getattr(cog, "manage_threads_impl"),  # noqa: B009
+                    )
+                    thread_result = await method(channel)
+                    archived_count, deleted_count = thread_result
 
-                        # Report results in the backup channel
-                        _ = await channel.send(
-                            f"🧹 Thread management complete.\nArchived threads: {archived_count}\nDeleted threads: {deleted_count}"
-                        )
-                    else:
-                        logger.warning(
-                            "Cog 'ThreadManagement' is not of expected type; skipping thread management.",
-                            actual_type=str(type(tm_cog)),
-                        )
+                    # Report results in the backup channel
+                    _ = await channel.send(
+                        f"🧹 Thread management complete.\nArchived threads: {archived_count}\nDeleted threads: {deleted_count}"
+                    )
                 else:
-                    logger.warning("ThreadManagement cog not loaded; skipping thread management.")
+                    logger.warning(
+                        "ThreadManagement cog not loaded or missing manage_threads_impl method; skipping thread management."
+                    )
 
         except Exception as e:
             logger.error("Nightly backup failed", error=str(e))
@@ -165,7 +167,7 @@ class NightScoutBackupBot(commands.Bot):
         """Load all cogs."""
         cogs = [
             "nightscout_backup_bot.cogs.general.ping",
-            "nightscout_backup_bot.cogs.general.querydb",
+            "nightscout_backup_bot.cogs.admin.querydb",
             "nightscout_backup_bot.cogs.general.dbstats",
             "nightscout_backup_bot.cogs.general.listbackups",
             "nightscout_backup_bot.cogs.admin.backup",

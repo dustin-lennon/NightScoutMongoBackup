@@ -1,7 +1,7 @@
 """QueryDB command for querying NightScout MongoDB collections."""
 
 from datetime import datetime
-from typing import Any, Literal, cast
+from typing import Literal, cast
 
 import disnake
 from disnake.ext import commands
@@ -21,12 +21,15 @@ DATE_VALIDATION_ERROR = "Date validation error"
 class QueryDBCog(commands.Cog):
     """Database query commands for administrators."""
 
+    bot: NightScoutBackupBot
+    mongo_service: MongoService
+
     def __init__(self, bot: NightScoutBackupBot) -> None:
         """Initialize QueryDB cog."""
         self.bot = bot
         self.mongo_service = MongoService()
 
-    def _flatten_document_to_fields(self, doc: dict[str, Any]) -> list[dict[str, Any]]:
+    def _flatten_document_to_fields(self, doc: dict[str, object]) -> list[dict[str, object]]:
         """
         Flatten a MongoDB document into Discord embed fields.
 
@@ -36,7 +39,7 @@ class QueryDBCog(commands.Cog):
         Returns:
             List of embed field dictionaries.
         """
-        fields: list[dict[str, Any]] = []
+        fields: list[dict[str, object]] = []
 
         for key, value in doc.items():
             if key != "uploader":
@@ -47,7 +50,7 @@ class QueryDBCog(commands.Cog):
 
                 # Add uploader sub-fields if value is a dict
                 if isinstance(value, dict):
-                    typed_dict = cast(dict[str, Any], value)
+                    typed_dict = cast(dict[str, object], value)
                     for sub_key, sub_value in typed_dict.items():
                         fields.append(
                             {
@@ -92,7 +95,7 @@ class QueryDBCog(commands.Cog):
         collection_name: str,
         count: int,
         date_param: str,
-        fields: list[dict[str, Any]],
+        fields: list[dict[str, object]],
     ) -> disnake.Embed:
         """
         Build Discord embed for query results.
@@ -122,16 +125,16 @@ class QueryDBCog(commands.Cog):
 
         # Add fields (Discord limits to 25 fields per embed)
         for field in fields[:25]:
-            embed.add_field(
+            _ = embed.add_field(
                 name=field["name"],
                 value=field["value"],
-                inline=field.get("inline", True),
+                inline=cast(bool, field.get("inline", True)),
             )
 
         # Add footer
         formatted_count = self._format_number(count)
         formatted_date = self._format_date(date_param)
-        embed.set_footer(text=f"The {display_name} collection has {formatted_count} entries since {formatted_date}")
+        _ = embed.set_footer(text=f"The {display_name} collection has {formatted_count} entries since {formatted_date}")
 
         return embed
 
@@ -389,7 +392,7 @@ class QueryDBCog(commands.Cog):
         self,
         inter: disnake.ApplicationCommandInteraction[NightScoutBackupBot],
         collection: Literal["Entries", "Device Status", "Treatments"],
-        date: str = commands.Param(  # type: ignore[assignment]
+        date: str = commands.Param(  # pyright: ignore[reportUnknownMemberType, reportCallInDefaultInitializer]
             description="Date to query (YYYY-MM-DD format, e.g., 2024-01-01)"
         ),
     ) -> None:

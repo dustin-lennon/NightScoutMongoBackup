@@ -1,11 +1,16 @@
 """Admin command for thread management: archive and delete backup threads."""
 
+from __future__ import annotations
+
 import datetime
+from typing import TYPE_CHECKING
 
 import disnake
 from disnake.ext import commands
 
-from nightscout_backup_bot.bot import NightScoutBackupBot
+if TYPE_CHECKING:
+    from nightscout_backup_bot.bot import NightScoutBackupBot
+
 from nightscout_backup_bot.config import settings
 from nightscout_backup_bot.logging_config import StructuredLogger
 
@@ -15,10 +20,8 @@ logger = StructuredLogger(__name__)
 class ThreadManagement(commands.Cog):
     """Cog for managing backup threads: archiving and deleting."""
 
-    bot: NightScoutBackupBot
-
     def __init__(self, bot: NightScoutBackupBot):
-        self.bot = bot
+        self.bot: NightScoutBackupBot = bot
 
     @commands.slash_command(
         name="manage_threads",
