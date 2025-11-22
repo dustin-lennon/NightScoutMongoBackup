@@ -163,9 +163,28 @@ async def _execute_action(target_key: str, action: Literal["start", "stop", "res
     if code == 0:
         return PM2Result(ok=True, status=status_map[action], stdout=out, stderr=err)
 
-    msg = (err or out or "").lower()
-    if "process or namespace not found" in msg or "script not found" in msg:
+    # Check for success indicators in stdout even if exit code is non-zero
+    # PM2 sometimes returns non-zero exit codes for successful operations
+    msg_combined = (out + " " + err).lower()
+    
+    if "process or namespace not found" in msg_combined or "script not found" in msg_combined:
         return PM2Result(ok=False, status="not_found", stdout=out, stderr=err)
+    
+    # Check for success indicators in stdout for stop/restart actions
+    # PM2 outputs "Applying action stopProcessId" or "Applying action restartProcessId" on success
+    if action in ("stop", "restart"):
+        action_indicators = {
+            "stop": "applying action stopprocessid",
+            "restart": "applying action restartprocessid",
+        }
+        if action_indicators[action] in msg_combined:
+            logger.info(
+                f"PM2 {action} command succeeded despite non-zero exit code",
+                target=target_key,
+                exit_code=code,
+                stdout=out,
+            )
+            return PM2Result(ok=True, status=status_map[action], stdout=out, stderr=err)
 
     return PM2Result(ok=False, status="error", stdout=out, stderr=err)
 
