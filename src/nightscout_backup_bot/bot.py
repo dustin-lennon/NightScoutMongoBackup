@@ -2,6 +2,7 @@
 
 import asyncio
 import datetime
+from typing import override
 
 import disnake
 from disnake.ext import commands, tasks
@@ -49,7 +50,7 @@ class NightScoutBackupBot(commands.Bot):
         # Start nightly backup task if enabled
         if settings.enable_nightly_backup:
             if not self.nightly_backup.is_running():
-                self.nightly_backup.start()
+                _ = self.nightly_backup.start()
                 logger.info(
                     "Nightly backup task started",
                     hour=settings.backup_hour,
@@ -66,6 +67,7 @@ class NightScoutBackupBot(commands.Bot):
             guild_id=inter.guild_id if inter.guild else None,
         )
 
+    @override
     async def on_slash_command_error(
         self,
         interaction: disnake.ApplicationCommandInteraction["NightScoutBackupBot"],
@@ -92,7 +94,7 @@ class NightScoutBackupBot(commands.Bot):
                 return
 
             # Send start message to main channel
-            await channel.send("Backup started! Progress and download link will be posted in the thread.")
+            _ = await channel.send("Backup started! Progress and download link will be posted in the thread.")
 
             # Execute backup
             result = await self.backup_service.execute_backup(channel)
@@ -101,7 +103,7 @@ class NightScoutBackupBot(commands.Bot):
 
             # Send completion message to main channel if successful
             if result.get("success"):
-                await channel.send("✅ Backup completed successfully!")
+                _ = await channel.send("✅ Backup completed successfully!")
 
                 # Thread management: archive/delete old threads
                 cog = self.get_cog("ThreadManagement")
@@ -116,10 +118,8 @@ class NightScoutBackupBot(commands.Bot):
                         archived_count, deleted_count = await tm_cog.manage_threads_impl(channel)
 
                         # Report results in the backup channel
-                        await channel.send(
-                            f"🧹 Thread management complete.\n"
-                            f"Archived threads: {archived_count}\n"
-                            f"Deleted threads: {deleted_count}"
+                        _ = await channel.send(
+                            f"🧹 Thread management complete.\nArchived threads: {archived_count}\nDeleted threads: {deleted_count}"
                         )
                     else:
                         logger.warning(
@@ -198,7 +198,7 @@ def create_bot() -> NightScoutBackupBot:
         try:
             import sentry_sdk
 
-            sentry_sdk.init(
+            _ = sentry_sdk.init(
                 dsn=settings.sentry_dsn,
                 environment=settings.node_env,
                 traces_sample_rate=1.0 if not settings.is_production else 0.1,

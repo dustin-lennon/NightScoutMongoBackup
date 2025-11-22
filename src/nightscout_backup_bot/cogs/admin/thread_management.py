@@ -5,6 +5,7 @@ import datetime
 import disnake
 from disnake.ext import commands
 
+from nightscout_backup_bot.bot import NightScoutBackupBot
 from nightscout_backup_bot.config import settings
 from nightscout_backup_bot.logging_config import StructuredLogger
 
@@ -14,7 +15,9 @@ logger = StructuredLogger(__name__)
 class ThreadManagement(commands.Cog):
     """Cog for managing backup threads: archiving and deleting."""
 
-    def __init__(self, bot: commands.Bot):
+    bot: NightScoutBackupBot
+
+    def __init__(self, bot: NightScoutBackupBot):
         self.bot = bot
 
     @commands.slash_command(
@@ -29,9 +32,7 @@ class ThreadManagement(commands.Cog):
             return
         archived_count, deleted_count = await self.manage_threads_impl(channel)  # type: ignore
         await inter.followup.send(
-            f"✅ Thread management complete.\n"
-            f"Archived threads: {archived_count}\n"
-            f"Deleted threads: {deleted_count}",
+            f"✅ Thread management complete.\nArchived threads: {archived_count}\nDeleted threads: {deleted_count}",
             ephemeral=True,
         )
 
@@ -51,10 +52,10 @@ class ThreadManagement(commands.Cog):
                 await thread.delete(reason="Download link no longer exists.. removing thread")
                 deleted_count += 1
             elif age.days >= 1:
-                await thread.edit(archived=True, reason="Archiving backup thread after open 1 day or longer...")
+                _ = await thread.edit(archived=True, reason="Archiving backup thread after open 1 day or longer...")
                 archived_count += 1
         return archived_count, deleted_count
 
 
-def setup(bot: commands.Bot) -> None:
+def setup(bot: NightScoutBackupBot) -> None:
     bot.add_cog(ThreadManagement(bot))
