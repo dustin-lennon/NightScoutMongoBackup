@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import disnake
 from disnake.ext import commands
@@ -43,9 +43,114 @@ class ThreadManagement(commands.Cog):
         now = datetime.datetime.now(datetime.UTC)
         archived_count = 0
         deleted_count = 0
-        threads = channel.threads
 
-        for thread in threads:
+        # Get active (non-archived) threads
+        active_threads = list(channel.threads)
+
+        # Fetch archived threads separately - channel.threads only returns active threads
+        # We need to fetch archived threads to ensure we can delete old archived threads (8+ days)
+        # Discord API: GET /channels/{channel.id}/threads/archived/private
+        archived_threads: list[disnake.Thread] = []
+        if channel.guild and hasattr(self.bot, "http") and self.bot.http:
+            try:
+                # Use HTTP client to fetch archived private threads directly from Discord API
+                from disnake.http import Route
+
+                # Make direct API request to Discord's archived threads endpoint
+                before: int | None = None
+                while True:
+                    # Build the API endpoint URL
+                    url = f"/channels/{channel.id}/threads/archived/private"
+                    params: dict[str, int | str] = {"limit": 100}
+                    if before:
+                        params["before"] = str(before)
+
+                    # Make the HTTP request
+                    route = Route("GET", url)
+                    # Type ignore needed as HTTP client types are not fully typed
+                    data: dict[str, object] = await self.bot.http.request(route, params=params)  # type: ignore[arg-type, assignment]
+
+                    # Extract threads from response
+                    threads_data_raw = data.get("threads", [])  # type: ignore[assignment]
+                    if not isinstance(threads_data_raw, list):
+                        break
+
+                    # Process each archived thread
+                    # Type ignore needed as HTTP response types are not fully typed
+                    # Cast list to help type checker understand element types
+                    threads_list = cast(list[object], threads_data_raw)
+                    for thread_data_item in threads_list:  # type: ignore[assignment]
+                        # Type check to ensure it's a dict before processing
+                        # Cast to help type checker understand the type after isinstance check
+                        if not isinstance(thread_data_item, dict) or "id" not in thread_data_item:
+                            continue
+                        thread_data_raw = cast(dict[str, object], thread_data_item)
+
+                        thread_id_str = str(thread_data_raw["id"])
+                        try:
+                            thread_id = int(thread_id_str)
+                        except (ValueError, TypeError):
+                            continue
+
+                        try:
+                            # Try to get thread from cache first
+                            thread = channel.guild.get_thread(thread_id)
+                            if thread is None:
+                                # Fetch the thread if not in cache
+                                fetched_channel = await channel.guild.fetch_channel(thread_id)
+                                if not isinstance(fetched_channel, disnake.Thread):
+                                    continue
+                                thread = fetched_channel
+
+                            if thread.type == disnake.ChannelType.private_thread:
+                                archived_threads.append(thread)
+                        except Exception:
+                            # Thread might have been deleted, skip it
+                            logger.debug("Could not fetch archived thread", thread_id=thread_id)
+                            continue
+
+                    # Check if there are more threads to fetch
+                    has_more_raw = data.get("has_more", False)  # type: ignore[assignment]
+                    has_more = bool(has_more_raw) if isinstance(has_more_raw, bool) else False
+                    if not has_more:
+                        break
+
+                    # Set before to the oldest thread's ID for next iteration
+                    if threads_list:
+                        last_thread_item = threads_list[-1]
+                        # Cast to help type checker understand the type after isinstance check
+                        if isinstance(last_thread_item, dict) and "id" in last_thread_item:
+                            last_thread_raw = cast(dict[str, object], last_thread_item)
+                            last_id_str = str(last_thread_raw["id"])
+                            try:
+                                before = int(last_id_str)
+                            except (ValueError, TypeError):
+                                break
+                        else:
+                            break
+                    else:
+                        break
+            except ImportError:
+                # Route not available - this is expected if disnake version doesn't support it
+                logger.debug("disnake.http.Route not available, archived threads will not be fetched")
+            except Exception as e:
+                logger.warning("Failed to fetch archived threads", error=str(e), channel_id=channel.id)
+
+        # Combine active and archived threads, using a set to deduplicate by thread ID
+        seen_thread_ids: set[int] = set()
+        all_threads: list[disnake.Thread] = []
+
+        for thread in active_threads:
+            if thread.id not in seen_thread_ids:
+                seen_thread_ids.add(thread.id)
+                all_threads.append(thread)
+
+        for thread in archived_threads:
+            if thread.id not in seen_thread_ids:
+                seen_thread_ids.add(thread.id)
+                all_threads.append(thread)
+
+        for thread in all_threads:
             if thread.type != disnake.ChannelType.private_thread:
                 continue
             age = now - thread.created_at
