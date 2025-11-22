@@ -14,15 +14,6 @@ on:
         options:
           - production
           - staging
-      bump_type:
-        description: 'Version bump type (major, minor, patch)'
-        required: false
-        default: 'minor'
-        type: choice
-        options:
-          - major
-          - minor
-          - patch
   push:
     branches:
       - main
@@ -39,34 +30,8 @@ jobs:
     environment: ${{ github.event.inputs.environment || 'production' }}
 
     steps:
-
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Bump semantic version and tag
-        uses: frostming/poetry-version@v1
-        with:
-          version: ${{ github.event.inputs.bump_type || 'minor' }}
-
-      - name: Bump version in package.json with Bun
-        run: |
-          bun x npm version ${{ github.event.inputs.bump_type || 'minor' }} --no-git-tag-version
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@github.com"
-          git add package.json
-          git commit -m "chore: bump package.json version (${{ github.event.inputs.bump_type || 'minor' }})"
-          git push
-
-      - name: Commit and tag version
-        run: |
-          NEW_VERSION=$(poetry version -s)
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@github.com"
-          git add pyproject.toml
-          git commit -m "chore: bump version to $NEW_VERSION"
-          git tag v$NEW_VERSION
-          git push
-          git push --tags
 
       - name: Setup SSH
         run: |
@@ -89,11 +54,11 @@ jobs:
             # Navigate to deployment directory
             cd "${DEPLOY_PATH}"
 
-            # Pull latest changes and checkout latest tag
-            echo "🔄 Pulling latest changes and checking out latest tag..."
-            git fetch --tags
-            LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
-            git checkout $LATEST_TAG
+            # Pull latest changes
+            echo "🔄 Pulling latest changes..."
+            git fetch origin
+            git checkout main
+            git pull origin main
 
             # Activate poetry environment and install dependencies
             echo "📚 Installing dependencies..."
