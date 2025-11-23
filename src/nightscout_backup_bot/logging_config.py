@@ -2,7 +2,6 @@
 
 import logging
 import sys
-from typing import Any
 
 from .config import settings
 
@@ -52,37 +51,39 @@ def get_logger(name: str) -> logging.Logger:
 class StructuredLogger:
     """Structured logger wrapper for consistent logging with context."""
 
+    logger: logging.Logger
+
     def __init__(self, name: str) -> None:
         """Initialize structured logger."""
         self.logger = get_logger(name)
 
-    def _format_message(self, message: str, **context: Any) -> str:
+    def _format_message(self, message: str, **context: object) -> str:
         """Format message with context."""
         if not context:
             return message
         context_str = " | ".join(f"{k}={v}" for k, v in context.items())
         return f"{message} | {context_str}"
 
-    def debug(self, message: str, **context: Any) -> None:
+    def debug(self, message: str, **context: object) -> None:
         """Log debug message with context."""
         self.logger.debug(self._format_message(message, **context))
 
-    def info(self, message: str, **context: Any) -> None:
+    def info(self, message: str, **context: object) -> None:
         """Log info message with context."""
         self.logger.info(self._format_message(message, **context))
 
-    def warning(self, message: str, **context: Any) -> None:
+    def warning(self, message: str, **context: object) -> None:
         """Log warning message with context."""
         self.logger.warning(self._format_message(message, **context))
 
-    def error(self, message: str, exc_info: bool = False, **context: Any) -> None:
+    def error(self, message: str, exc_info: bool = False, **context: object) -> None:
         """Log error message with context."""
         self.logger.error(self._format_message(message, **context), exc_info=exc_info)
 
-    def critical(self, message: str, **context: Any) -> None:
+    def critical(self, message: str, **context: object) -> None:
         """Log critical message with context."""
         self.logger.critical(self._format_message(message, **context))
 
-    def exception(self, message: str, **context: Any) -> None:
+    def exception(self, message: str, **context: object) -> None:
         """Log exception with context."""
         self.logger.exception(self._format_message(message, **context))

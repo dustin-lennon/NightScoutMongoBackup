@@ -28,7 +28,7 @@ class BackupCog(commands.Cog):
         name=BACKUP_COMMAND_NAME,
         description="Creates a backup of the Nightscout database.",
     )
-    @commands.cooldown(1, 300, type=commands.BucketType.user)
+    @commands.cooldown(1, 300, type=commands.BucketType.user)  # type: ignore[misc]
     @is_owner()
     async def backup(self, inter: disnake.ApplicationCommandInteraction[NightScoutBackupBot]) -> None:
         """
