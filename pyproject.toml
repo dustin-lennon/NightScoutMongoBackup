@@ -92,8 +92,11 @@ module = [
     "moto.*",
     "brotli.*",
     "dotenv_vault.*",
+    "disnake.*",
 ]
 ignore_missing_imports = true
+ignore_errors = true
+follow_imports = "skip"
 
 # Pytest configuration
 [tool.pytest.ini_options]

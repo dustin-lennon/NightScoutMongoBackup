@@ -139,8 +139,8 @@ class NightScoutBackupBot(commands.Bot):
         """Wait until bot is ready and it's the scheduled time."""
         await self.wait_until_ready()
 
-        # Calculate time until next backup
-        now = datetime.datetime.now(datetime.UTC)
+        # Calculate time until next backup using server's local timezone
+        now = datetime.datetime.now()
         target_time = now.replace(
             hour=settings.backup_hour,
             minute=settings.backup_minute,
