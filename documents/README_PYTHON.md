@@ -129,7 +129,7 @@ S3_BACKUP_BUCKET=your-backup-bucket
 # =================================================================
 # Enable or disable nightly backups (default: true)
 ENABLE_NIGHTLY_BACKUP=true
-# Backup schedule (24-hour format, UTC)
+# Backup schedule (24-hour format, uses server's local timezone)
 BACKUP_HOUR=2
 BACKUP_MINUTE=0
 # Compression method: 'gzip' (recommended) or 'brotli' (better compression, slightly slower)
