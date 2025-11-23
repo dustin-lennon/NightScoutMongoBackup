@@ -57,13 +57,14 @@ class ThreadManagement(commands.Cog):
                 from disnake.http import Route
 
                 # Make direct API request to Discord's archived threads endpoint
-                before: int | None = None
+                # Discord API expects ISO8601 timestamp string for 'before' parameter, not thread ID
+                before: str | None = None
                 while True:
                     # Build the API endpoint URL
                     url = f"/channels/{channel.id}/threads/archived/private"
                     params: dict[str, int | str] = {"limit": 100}
                     if before:
-                        params["before"] = str(before)
+                        params["before"] = before
 
                     # Make the HTTP request
                     route = Route("GET", url)
@@ -115,16 +116,33 @@ class ThreadManagement(commands.Cog):
                     if not has_more:
                         break
 
-                    # Set before to the oldest thread's ID for next iteration
+                    # Set before to the oldest thread's archive_timestamp (ISO8601) for next iteration
+                    # Discord API requires ISO8601 timestamp string, not thread ID
                     if threads_list:
                         last_thread_item = threads_list[-1]
                         # Cast to help type checker understand the type after isinstance check
-                        if isinstance(last_thread_item, dict) and "id" in last_thread_item:
+                        if isinstance(last_thread_item, dict):
                             last_thread_raw = cast(dict[str, object], last_thread_item)
-                            last_id_str = str(last_thread_raw["id"])
-                            try:
-                                before = int(last_id_str)
-                            except (ValueError, TypeError):
+                            # Extract archive_timestamp from thread_metadata
+                            thread_metadata = last_thread_raw.get("thread_metadata")
+                            if isinstance(thread_metadata, dict):
+                                thread_metadata_dict = cast(dict[str, object], thread_metadata)
+                                archive_timestamp = thread_metadata_dict.get("archive_timestamp")
+                                if isinstance(archive_timestamp, str):
+                                    before = archive_timestamp
+                                else:
+                                    # If archive_timestamp is not a string, we can't paginate
+                                    logger.warning(
+                                        "archive_timestamp is not a string, cannot paginate further",
+                                        thread_id=last_thread_raw.get("id"),
+                                    )
+                                    break
+                            else:
+                                # No thread_metadata means we can't get the timestamp
+                                logger.warning(
+                                    "Thread missing thread_metadata, cannot paginate further",
+                                    thread_id=last_thread_raw.get("id"),
+                                )
                                 break
                         else:
                             break

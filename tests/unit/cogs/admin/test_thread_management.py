@@ -13,17 +13,21 @@ class DummyThread:
         created_at: datetime.datetime,
         archived: bool = False,
         thread_type: disnake.ChannelType = disnake.ChannelType.public_thread,
+        thread_id: int | None = None,
     ):
         self.created_at = created_at
         self.archived = archived
         self.type = thread_type
+        self.id = thread_id if thread_id is not None else id(self)  # Use object id as fallback
         self.edit = AsyncMock()
         self.delete = AsyncMock()
 
 
 class DummyChannel:
-    def __init__(self, threads: list[DummyThread]):
+    def __init__(self, threads: list[DummyThread], channel_id: int = 123):
         self.threads = threads
+        self.id = channel_id
+        self.guild = None  # None to skip archived thread fetching in tests
 
 
 @pytest.mark.asyncio
