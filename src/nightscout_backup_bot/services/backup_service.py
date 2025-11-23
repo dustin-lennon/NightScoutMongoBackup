@@ -1,7 +1,8 @@
 """Backup service that orchestrates the full backup workflow."""
 
 from datetime import UTC, datetime
-from typing import Any
+from pathlib import Path
+from typing import cast
 
 import disnake
 
@@ -18,6 +19,11 @@ logger = StructuredLogger("services.backup")
 class BackupService:
     """Service that orchestrates the full backup workflow."""
 
+    mongo_service: MongoService
+    s3_service: S3Service
+    file_service: FileService
+    compression_service: CompressionService
+
     def __init__(self) -> None:
         """Initialize backup service with all sub-services."""
         self.mongo_service = MongoService()
@@ -28,14 +34,14 @@ class BackupService:
     async def execute_backup(
         self,
         channel: disnake.TextChannel,
-        collections: list[str] | None = None,
-    ) -> dict[str, Any]:
+        _collections: list[str] | None = None,
+    ) -> dict[str, object]:
         """
         Execute full backup workflow with Discord progress updates (mongodump-based).
 
         Args:
             channel: Discord channel for creating progress thread.
-            collections: (Unused) for compatibility.
+            _collections: (Unused) for compatibility.
 
         Returns:
             Dictionary with backup results and statistics.
@@ -45,30 +51,31 @@ class BackupService:
         thread = await thread_service.create_backup_thread(timestamp)
 
         try:
-            await thread_service.send_progress(thread, "🔄 Starting backup process...")
-            await thread_service.send_progress(thread, "🔄 Connecting to MongoDB Atlas...")
+            _ = await thread_service.send_progress(thread, "🔄 Starting backup process...")
+            _ = await thread_service.send_progress(thread, "🔄 Connecting to MongoDB Atlas...")
             await self.mongo_service.connect()  # type: ignore[attr-defined]
-            await thread_service.send_progress(thread, "✅ Connected to MongoDB Atlas")
+            _ = await thread_service.send_progress(thread, "✅ Connected to MongoDB Atlas")
 
             # Step 2: Dump database
-            await thread_service.send_progress(thread, "🔄 Dumping MongoDB database...")
+            _ = await thread_service.send_progress(thread, "🔄 Dumping MongoDB database...")
             backup_dir = "backups"
             dump_stats = await self.mongo_service.dump_database(backup_dir)
 
-            await thread_service.send_progress(
+            _ = await thread_service.send_progress(
                 thread,
                 f"✅ Database dumped ({dump_stats['original_size']} uncompressed, {dump_stats['compressed_size']} compressed)",
             )
 
             # Step 3: Upload to S3
-            await thread_service.send_progress(thread, "🔄 Uploading to AWS S3...")
-            download_url = await self.s3_service.upload_file(dump_stats["archive_path"])
-            await thread_service.send_progress(thread, "✅ Uploaded to S3")
+            _ = await thread_service.send_progress(thread, "🔄 Uploading to AWS S3...")
+            archive_path_str = cast(str, dump_stats["archive_path"])
+            download_url = await self.s3_service.upload_file(Path(archive_path_str))
+            _ = await thread_service.send_progress(thread, "✅ Uploaded to S3")
 
             # Step 4: Cleanup local files
-            await thread_service.send_progress(thread, "🔄 Cleaning up local files...")
-            await self.file_service.delete_file(dump_stats["archive_path"])
-            await thread_service.send_progress(thread, "✅ Local files cleaned up")
+            _ = await thread_service.send_progress(thread, "🔄 Cleaning up local files...")
+            await self.file_service.delete_file(archive_path_str)
+            _ = await thread_service.send_progress(thread, "✅ Local files cleaned up")
 
             # Step 5: Send completion message
             def parse_size(size_str: str) -> float:
@@ -108,11 +115,11 @@ class BackupService:
                 "compression_ratio": compression_ratio,
                 "compression_method": compression_method,
             }
-            await thread_service.send_completion(thread, download_url, stats)
+            _ = await thread_service.send_completion(thread, download_url, cast(dict[str, object], stats))
 
             logger.info(
                 "Backup completed successfully",
-                collections=stats["collections"],
+                collections=cast(str, stats["collections"]),
                 url=download_url,
             )
 
@@ -126,7 +133,7 @@ class BackupService:
         except Exception as e:
             error_msg = str(e)
             logger.error("Backup failed", error=error_msg)
-            await thread_service.send_error(thread, error_msg)
+            _ = await thread_service.send_error(thread, error_msg)
             raise
 
         finally:
