@@ -118,17 +118,22 @@ async def test_manage_threads_command_success(monkeypatch: pytest.MonkeyPatch) -
         created_at=now - datetime.timedelta(days=2), archived=False, thread_type=disnake.ChannelType.private_thread
     )
 
-    channel = DummyChannel([t1])
+    # Make channel a proper TextChannel instance
+    mock_text_channel = MagicMock(spec=disnake.TextChannel)
+    mock_text_channel.threads = [t1]
+    mock_text_channel.id = 123
+
     bot = MagicMock()
     cog = ThreadManagement(bot)
     inter = MagicMock()
     inter.response.defer = AsyncMock()
     inter.followup.send = AsyncMock()
-    bot.get_channel.return_value = channel
+    bot.get_channel.return_value = mock_text_channel
 
     monkeypatch.setattr("nightscout_backup_bot.config.settings.backup_channel_id", "123")
 
-    await cog.manage_threads(inter)  # type: ignore
+    # Call via callback to properly invoke the slash command
+    await cog.manage_threads.callback(cog, inter)  # type: ignore
 
     inter.response.defer.assert_called_once()
     inter.followup.send.assert_called_once()
@@ -150,7 +155,8 @@ async def test_manage_threads_channel_not_found(monkeypatch: pytest.MonkeyPatch)
 
     monkeypatch.setattr("nightscout_backup_bot.config.settings.backup_channel_id", "123")
 
-    await cog.manage_threads(inter)  # type: ignore
+    # Call via callback to properly invoke the slash command
+    await cog.manage_threads.callback(cog, inter)  # type: ignore
 
     inter.followup.send.assert_called_once()
     call_args = inter.followup.send.call_args[0][0]
@@ -171,7 +177,8 @@ async def test_manage_threads_not_text_channel(monkeypatch: pytest.MonkeyPatch) 
 
     monkeypatch.setattr("nightscout_backup_bot.config.settings.backup_channel_id", "123")
 
-    await cog.manage_threads(inter)  # type: ignore
+    # Call via callback to properly invoke the slash command
+    await cog.manage_threads.callback(cog, inter)  # type: ignore
 
     inter.followup.send.assert_called_once()
     call_args = inter.followup.send.call_args[0][0]
