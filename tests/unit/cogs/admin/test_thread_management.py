@@ -1,5 +1,5 @@
 import datetime
-from typing import cast
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
 
 import disnake
@@ -41,6 +41,31 @@ class DummyChannel:
         self.threads = threads
         self.id = channel_id
         self.guild = None  # None to skip archived thread fetching in tests
+
+
+class DummyGuild:
+    """Mock guild for testing archived thread fetching."""
+
+    def __init__(self) -> None:
+        self._threads: dict[int, DummyThread] = {}
+
+    def get_thread(self, thread_id: int) -> DummyThread | None:
+        return self._threads.get(thread_id)
+
+    async def fetch_channel(self, channel_id: int) -> DummyThread:
+        thread = self._threads.get(channel_id)
+        if thread is None:
+            raise ValueError(f"Thread {channel_id} not found")
+        return thread
+
+
+class DummyChannelWithGuild:
+    """Channel with guild for testing archived thread fetching."""
+
+    def __init__(self, threads: list[DummyThread], channel_id: int = 123, guild: DummyGuild | None = None):
+        self.threads = threads
+        self.id = channel_id
+        self.guild = guild or DummyGuild()
 
 
 @pytest.mark.asyncio
@@ -335,3 +360,418 @@ async def test_delete_archived_thread_unarchives_first(monkeypatch: pytest.Monke
 
     assert archived_count == 0
     assert deleted_count == 1
+
+
+@pytest.mark.asyncio
+async def test_fetch_archived_threads_no_guild() -> None:
+    """Test that archived thread fetching returns early when no guild."""
+    channel = DummyChannel([DummyThread(created_at=datetime.datetime.now(datetime.UTC))])
+    bot = MagicMock(spec=NightScoutBackupBot)
+    bot.http = None
+    cog = ThreadManagement(bot)
+
+    archived_threads = await cog._fetch_archived_threads(cast(disnake.TextChannel, cast(object, channel)))  # type: ignore[attr-defined]  # noqa: SLF001
+    assert archived_threads == []
+
+
+@pytest.mark.asyncio
+async def test_fetch_archived_threads_no_http() -> None:
+    """Test that archived thread fetching returns early when no http client."""
+    guild = DummyGuild()
+    channel = DummyChannelWithGuild([], guild=guild)
+    bot = MagicMock(spec=NightScoutBackupBot)
+    bot.http = None
+    cog = ThreadManagement(bot)
+
+    archived_threads = await cog._fetch_archived_threads(cast(disnake.TextChannel, cast(object, channel)))  # type: ignore[attr-defined]  # noqa: SLF001
+    assert archived_threads == []
+
+
+@pytest.mark.asyncio
+async def test_fetch_archived_threads_import_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test that ImportError is handled when Route is not available."""
+    guild = DummyGuild()
+    channel = DummyChannelWithGuild([], guild=guild)
+    bot = MagicMock(spec=NightScoutBackupBot)
+    bot.http = MagicMock()
+
+    # Mock the import to raise ImportError
+    original_import = __import__
+
+    def mock_import_error(name: str, *args: Any, **kwargs: Any) -> Any:  # type: ignore[no-any-return, no-any-untyped]
+        if name == "disnake.http":
+            raise ImportError("No module named 'disnake.http'")
+        return original_import(name, *args, **kwargs)  # type: ignore[no-any-return]
+
+    monkeypatch.setattr("builtins.__import__", mock_import_error)
+
+    cog = ThreadManagement(bot)
+    archived_threads = await cog._fetch_archived_threads(cast(disnake.TextChannel, cast(object, channel)))
+    assert archived_threads == []
+
+
+@pytest.mark.asyncio
+async def test_fetch_archived_threads_success(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test successful fetching of archived threads."""
+    now = datetime.datetime.now(datetime.UTC)
+    guild = DummyGuild()
+
+    # Create an archived thread
+    archived_thread = DummyThread(
+        created_at=now - datetime.timedelta(days=2),
+        archived=True,
+        thread_type=disnake.ChannelType.private_thread,
+        thread_id=456,
+    )
+    guild._threads[456] = archived_thread
+
+    channel = DummyChannelWithGuild([], guild=guild, channel_id=123)
+
+    # Mock the HTTP client and Route
+    async def mock_request(route: Any, params: Any = None) -> dict[str, Any]:  # type: ignore[no-any-untyped]  # noqa: ARG001
+        return {
+            "threads": [
+                {
+                    "id": 456,
+                    "type": 12,  # private_thread
+                    "thread_metadata": {"archive_timestamp": "2024-01-01T00:00:00.000000+00:00"},
+                }
+            ],
+            "has_more": False,
+        }
+
+    bot = MagicMock(spec=NightScoutBackupBot)
+    bot.http = MagicMock()
+    bot.http.request = AsyncMock(side_effect=mock_request)
+
+    # Mock Route class
+    def mock_route_init(_method: str, _url: str) -> MagicMock:
+        return MagicMock()
+
+    with monkeypatch.context() as m:
+        m.setattr("disnake.http.Route", mock_route_init)
+        cog = ThreadManagement(bot)
+        archived_threads = await cog._fetch_archived_threads(cast(disnake.TextChannel, cast(object, channel)))
+
+    assert len(archived_threads) == 1
+    assert archived_threads[0].id == 456
+
+
+@pytest.mark.asyncio
+async def test_fetch_archived_threads_page_no_more() -> None:
+    """Test pagination when has_more is False."""
+    guild = DummyGuild()
+    channel = DummyChannelWithGuild([], guild=guild, channel_id=123)
+    archived_threads: list[disnake.Thread] = []
+
+    async def mock_request(route: Any, params: Any = None) -> dict[str, Any]:  # type: ignore[no-any-untyped]  # noqa: ARG001
+        return {"threads": [], "has_more": False}
+
+    bot = MagicMock(spec=NightScoutBackupBot)
+    bot.http = MagicMock()
+    bot.http.request = AsyncMock(side_effect=mock_request)
+
+    cog = ThreadManagement(bot)
+    result = await cog._fetch_archived_threads_page(cast(disnake.TextChannel, cast(object, channel)), archived_threads, None)  # type: ignore[attr-defined]  # noqa: SLF001
+
+    assert result is None
+    assert len(archived_threads) == 0
+
+
+@pytest.mark.asyncio
+async def test_fetch_archived_threads_page_not_list() -> None:
+    """Test when threads data is not a list."""
+    guild = DummyGuild()
+    channel = DummyChannelWithGuild([], guild=guild, channel_id=123)
+    archived_threads: list[disnake.Thread] = []
+
+    async def mock_request(route: Any, params: Any = None) -> dict[str, Any]:  # type: ignore[no-any-untyped]  # noqa: ARG001
+        return {"threads": "not a list", "has_more": False}
+
+    bot = MagicMock(spec=NightScoutBackupBot)
+    bot.http = MagicMock()
+    bot.http.request = AsyncMock(side_effect=mock_request)
+
+    cog = ThreadManagement(bot)
+    result = await cog._fetch_archived_threads_page(cast(disnake.TextChannel, cast(object, channel)), archived_threads, None)  # type: ignore[attr-defined]  # noqa: SLF001
+
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_fetch_archived_threads_page_with_before() -> None:
+    """Test pagination with before parameter."""
+    now = datetime.datetime.now(datetime.UTC)
+    guild = DummyGuild()
+    thread = DummyThread(created_at=now, thread_type=disnake.ChannelType.private_thread, thread_id=789)
+    guild._threads[789] = thread  # noqa: SLF001
+
+    channel = DummyChannelWithGuild([], guild=guild, channel_id=123)
+    archived_threads: list[disnake.Thread] = []
+    before_timestamp = "2024-01-01T00:00:00.000000+00:00"
+
+    async def mock_request(route: Any, params: Any = None) -> dict[str, Any]:  # type: ignore[no-any-untyped]  # noqa: ARG001
+        assert params is not None
+        assert params.get("before") == before_timestamp
+        return {
+            "threads": [
+                {"id": 789, "type": 12, "thread_metadata": {"archive_timestamp": "2024-01-02T00:00:00.000000+00:00"}}
+            ],
+            "has_more": False,
+        }
+
+    bot = MagicMock(spec=NightScoutBackupBot)
+    bot.http = MagicMock()
+    bot.http.request = AsyncMock(side_effect=mock_request)
+
+    cog = ThreadManagement(bot)
+    result = await cog._fetch_archived_threads_page(cast(disnake.TextChannel, cast(object, channel)), archived_threads, before_timestamp)  # type: ignore[attr-defined]  # noqa: SLF001
+
+    assert result is None
+    assert len(archived_threads) == 1
+
+
+@pytest.mark.asyncio
+async def test_fetch_archived_threads_page_has_more() -> None:
+    """Test pagination when has_more is True."""
+    now = datetime.datetime.now(datetime.UTC)
+    guild = DummyGuild()
+    thread = DummyThread(created_at=now, thread_type=disnake.ChannelType.private_thread, thread_id=999)
+    guild._threads[999] = thread  # noqa: SLF001
+
+    channel = DummyChannelWithGuild([], guild=guild, channel_id=123)
+    archived_threads: list[disnake.Thread] = []
+    next_timestamp = "2024-01-02T00:00:00.000000+00:00"
+
+    async def mock_request(route: Any, params: Any = None) -> dict[str, Any]:  # type: ignore[no-any-untyped]  # noqa: ARG001
+        return {
+            "threads": [{"id": 999, "type": 12, "thread_metadata": {"archive_timestamp": next_timestamp}}],
+            "has_more": True,
+        }
+
+    bot = MagicMock(spec=NightScoutBackupBot)
+    bot.http = MagicMock()
+    bot.http.request = AsyncMock(side_effect=mock_request)
+
+    cog = ThreadManagement(bot)
+    result = await cog._fetch_archived_threads_page(cast(disnake.TextChannel, cast(object, channel)), archived_threads, None)  # type: ignore[attr-defined]  # noqa: SLF001
+
+    assert result == next_timestamp
+    assert len(archived_threads) == 1
+
+
+@pytest.mark.asyncio
+async def test_parse_thread_from_data_invalid_dict() -> None:
+    """Test parsing thread from invalid data."""
+    guild = DummyGuild()
+    channel = DummyChannelWithGuild([], guild=guild)
+
+    cog = ThreadManagement(MagicMock(spec=NightScoutBackupBot))
+    result = await cog._parse_thread_from_data("not a dict", cast(disnake.TextChannel, cast(object, channel)))  # type: ignore[attr-defined]  # noqa: SLF001
+    assert result is None
+
+    result = await cog._parse_thread_from_data({}, cast(disnake.TextChannel, cast(object, channel)))  # type: ignore[attr-defined]  # noqa: SLF001
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_parse_thread_from_data_invalid_id() -> None:
+    """Test parsing thread with invalid ID."""
+    guild = DummyGuild()
+    channel = DummyChannelWithGuild([], guild=guild)
+
+    cog = ThreadManagement(MagicMock(spec=NightScoutBackupBot))
+    result = await cog._parse_thread_from_data({"id": "not a number"}, cast(disnake.TextChannel, cast(object, channel)))  # type: ignore[attr-defined]  # noqa: SLF001
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_parse_thread_from_data_fetch_channel() -> None:
+    """Test parsing thread that needs to be fetched (not in cache)."""
+    now = datetime.datetime.now(datetime.UTC)
+    guild = DummyGuild()
+
+    # Don't add to _threads so get_thread returns None, forcing a fetch
+    # But make fetch_channel return the thread
+    # Create a mock that passes isinstance check
+    mock_thread = MagicMock(spec=disnake.Thread)
+    mock_thread.id = 789
+    mock_thread.type = disnake.ChannelType.private_thread
+    mock_thread.created_at = now
+
+    async def mock_fetch_channel(channel_id: int) -> MagicMock:
+        if channel_id == 789:
+            return mock_thread
+        raise ValueError(f"Thread {channel_id} not found")
+
+    guild.fetch_channel = mock_fetch_channel  # type: ignore[method-assign]
+
+    channel = DummyChannelWithGuild([], guild=guild)
+
+    cog = ThreadManagement(MagicMock(spec=NightScoutBackupBot))
+    result = await cog._parse_thread_from_data({"id": 789}, cast(disnake.TextChannel, cast(object, channel)))  # type: ignore[attr-defined]  # noqa: SLF001
+    assert result is not None
+    assert result.id == 789
+
+
+@pytest.mark.asyncio
+async def test_parse_thread_from_data_from_cache() -> None:
+    """Test parsing thread that is found in cache."""
+    now = datetime.datetime.now(datetime.UTC)
+    guild = DummyGuild()
+    thread = DummyThread(created_at=now, thread_type=disnake.ChannelType.private_thread, thread_id=888)
+    guild._threads[888] = thread  # noqa: SLF001
+
+    channel = DummyChannelWithGuild([], guild=guild)
+
+    cog = ThreadManagement(MagicMock(spec=NightScoutBackupBot))
+    result = await cog._parse_thread_from_data({"id": 888}, cast(disnake.TextChannel, cast(object, channel)))  # type: ignore[attr-defined]  # noqa: SLF001
+    assert result is not None
+    assert result.id == 888
+
+
+@pytest.mark.asyncio
+async def test_parse_thread_from_data_fetch_fails() -> None:
+    """Test parsing thread when fetch fails."""
+    guild = DummyGuild()
+    channel = DummyChannelWithGuild([], guild=guild)
+
+    async def mock_fetch_channel(channel_id: int) -> DummyThread:
+        raise ValueError("Thread not found")
+
+    guild.fetch_channel = mock_fetch_channel  # type: ignore[method-assign]
+
+    cog = ThreadManagement(MagicMock(spec=NightScoutBackupBot))
+    result = await cog._parse_thread_from_data({"id": 999}, cast(disnake.TextChannel, cast(object, channel)))  # type: ignore[attr-defined]  # noqa: SLF001
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_parse_thread_from_data_not_thread_type() -> None:
+    """Test parsing when fetched channel is not a thread."""
+    guild = DummyGuild()
+    channel = DummyChannelWithGuild([], guild=guild)
+
+    async def mock_fetch_channel(channel_id: int) -> MagicMock:
+        return MagicMock()  # Not a thread
+
+    guild.fetch_channel = mock_fetch_channel  # type: ignore[method-assign]
+
+    cog = ThreadManagement(MagicMock(spec=NightScoutBackupBot))
+    result = await cog._parse_thread_from_data({"id": 999}, cast(disnake.TextChannel, cast(object, channel)))  # type: ignore[attr-defined]  # noqa: SLF001
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_extract_next_before_value_empty_list() -> None:
+    """Test extracting before value from empty list."""
+    cog = ThreadManagement(MagicMock(spec=NightScoutBackupBot))
+    result = cog._extract_next_before_value([])  # type: ignore[attr-defined]  # noqa: SLF001
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_extract_next_before_value_not_dict() -> None:
+    """Test extracting before value when last item is not a dict."""
+    cog = ThreadManagement(MagicMock(spec=NightScoutBackupBot))
+    result = cog._extract_next_before_value(["not a dict"])  # type: ignore[attr-defined]  # noqa: SLF001
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_extract_next_before_value_no_metadata() -> None:
+    """Test extracting before value when thread has no metadata."""
+    cog = ThreadManagement(MagicMock(spec=NightScoutBackupBot))
+    result = cog._extract_next_before_value([{"id": 123}])  # type: ignore[attr-defined]  # noqa: SLF001
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_extract_next_before_value_metadata_not_dict() -> None:
+    """Test extracting before value when metadata is not a dict."""
+    cog = ThreadManagement(MagicMock(spec=NightScoutBackupBot))
+    result = cog._extract_next_before_value([{"id": 123, "thread_metadata": "not a dict"}])  # type: ignore[attr-defined]  # noqa: SLF001
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_extract_next_before_value_no_timestamp() -> None:
+    """Test extracting before value when timestamp is missing."""
+    cog = ThreadManagement(MagicMock(spec=NightScoutBackupBot))
+    result = cog._extract_next_before_value([{"id": 123, "thread_metadata": {}}])  # type: ignore[attr-defined]  # noqa: SLF001
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_extract_next_before_value_timestamp_not_string() -> None:
+    """Test extracting before value when timestamp is not a string."""
+    cog = ThreadManagement(MagicMock(spec=NightScoutBackupBot))
+    result = cog._extract_next_before_value([{"id": 123, "thread_metadata": {"archive_timestamp": 12345}}])  # type: ignore[attr-defined]  # noqa: SLF001
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_extract_next_before_value_success() -> None:
+    """Test successfully extracting before value."""
+    cog = ThreadManagement(MagicMock(spec=NightScoutBackupBot))
+    timestamp = "2024-01-01T00:00:00.000000+00:00"
+    result = cog._extract_next_before_value(  # type: ignore[attr-defined]  # noqa: SLF001
+        [{"id": 123, "thread_metadata": {"archive_timestamp": timestamp}}]
+    )
+    assert result == timestamp
+
+
+@pytest.mark.asyncio
+async def test_combine_and_deduplicate_with_archived() -> None:
+    """Test combining threads with archived threads."""
+    now = datetime.datetime.now(datetime.UTC)
+    active_thread = DummyThread(created_at=now, thread_type=disnake.ChannelType.private_thread, thread_id=111)
+    archived_thread = DummyThread(created_at=now, thread_type=disnake.ChannelType.private_thread, thread_id=222)
+
+    cog = ThreadManagement(MagicMock(spec=NightScoutBackupBot))
+    result = cog._combine_and_deduplicate_threads(  # type: ignore[attr-defined]  # noqa: SLF001
+        cast("list[disnake.Thread]", [active_thread]),  # type: ignore[redundant-cast]
+        cast("list[disnake.Thread]", [archived_thread]),  # type: ignore[redundant-cast]
+    )
+
+    assert len(result) == 2
+    assert result[0].id == 111
+    assert result[1].id == 222
+
+
+@pytest.mark.asyncio
+async def test_fetch_archived_threads_exception(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test exception handling in fetch archived threads."""
+    guild = DummyGuild()
+    channel = DummyChannelWithGuild([], guild=guild, channel_id=123)
+
+    async def mock_request(route: Any, params: Any = None) -> dict[str, Any]:  # type: ignore[no-any-untyped]  # noqa: ARG001
+        raise Exception("API error")
+
+    bot = MagicMock(spec=NightScoutBackupBot)
+    bot.http = MagicMock()
+    bot.http.request = AsyncMock(side_effect=mock_request)
+
+    def mock_route_init(_method: str, _url: str) -> MagicMock:
+        return MagicMock()
+
+    with monkeypatch.context() as m:
+        m.setattr("disnake.http.Route", mock_route_init)
+        cog = ThreadManagement(bot)
+        archived_threads = await cog._fetch_archived_threads(cast(disnake.TextChannel, cast(object, channel)))  # type: ignore[attr-defined]  # noqa: SLF001
+
+    assert archived_threads == []
+
+
+@pytest.mark.asyncio
+async def test_setup_function() -> None:
+    """Test the setup function."""
+    from nightscout_backup_bot.cogs.admin.thread_management import setup
+
+    bot = MagicMock(spec=NightScoutBackupBot)
+    bot.add_cog = MagicMock()
+
+    setup(bot)
+
+    bot.add_cog.assert_called_once()  # type: ignore[attr-defined]
+    assert isinstance(bot.add_cog.call_args[0][0], ThreadManagement)  # type: ignore[attr-defined]
