@@ -268,11 +268,10 @@ async def test_before_nightly_backup() -> None:
         mock_settings.backup_hour = 2
         mock_settings.backup_minute = 0
 
-        # Mock datetime.now to return a fixed time
-        fixed_now = dt_module.datetime(2024, 1, 15, 1, 0, 0, tzinfo=dt_module.UTC)
+        # Mock datetime.now to return a fixed time (naive datetime, uses server timezone)
+        fixed_now = dt_module.datetime(2024, 1, 15, 1, 0, 0)
         with patch("nightscout_backup_bot.bot.datetime.datetime") as mock_datetime:
             mock_datetime.now.return_value = fixed_now
-            mock_datetime.UTC = dt_module.UTC
             mock_datetime.timedelta = dt_module.timedelta
 
             # Execute before_nightly_backup
