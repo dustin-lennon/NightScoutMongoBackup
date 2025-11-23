@@ -2,7 +2,6 @@
 
 import sys
 from pathlib import Path
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, Mock
 
 import pytest
@@ -12,10 +11,11 @@ from dotenv import load_dotenv
 # This ensures tests never use production credentials
 TEST_ENV_FILE = Path(__file__).parent.parent / ".env.test"
 if TEST_ENV_FILE.exists():
-    load_dotenv(TEST_ENV_FILE, override=True)
+    _ = load_dotenv(TEST_ENV_FILE, override=True)
 else:
     raise FileNotFoundError(
-        f"Test environment file not found: {TEST_ENV_FILE}\n" "Tests require .env.test file with safe fake credentials."
+        f"Test environment file not found: {TEST_ENV_FILE}\n"
+        + "Tests require .env.test file with safe fake credentials."
     )
 
 # Tell Pydantic to use .env.test instead of .env
@@ -37,35 +37,49 @@ def mock_settings() -> Settings:
     """Create mock settings for testing."""
     # This fixture provides a complete Settings object for tests,
     # bypassing environment variable loading for full isolation.
-    return Settings(
-        discord_token="test_token",
-        discord_client_id="123456789",
-        discord_public_key="test_public_key",
-        backup_channel_id="987654321",
-        bot_report_channel_id="1234567890",
-        bot_owner_ids="111111111,222222222",
-        mongo_host="test.mongodb.net",
-        mongo_username="testuser",
-        mongo_password="testpass",
-        mongo_db="testdb",
-        mongo_api_key="test_api_key",
-        mongo_db_max_size=512,
-        aws_access_key_id="test_access_key",
-        aws_secret_access_key="test_secret_key",
-        aws_region="us-east-1",
-        s3_backup_bucket="test-bucket",
-        enable_nightly_backup=False,
-        backup_hour=2,
-        backup_minute=0,
-        compression_method=CompressionMethod.GZIP,
-        sentry_dsn=None,
-        sentry_auth_token=None,
-        node_env="development",
-        test_guilds="1234567890",
-        linode_ssh_host=None,
-        linode_ssh_user="root",
-        linode_ssh_key_path=None,
-        pm2_dexcom_app_name="Dexcom",
+    return Settings.model_validate(
+        {
+            "discord_token": "test_token",
+            "discord_client_id": "123456789",
+            "discord_public_key": "test_public_key",
+            "backup_channel_id": "987654321",
+            "bot_report_channel_id": "1234567890",
+            "bot_owner_ids": "111111111,222222222",
+            "mongo_host": "test.mongodb.net",
+            "mongo_username": "testuser",
+            "mongo_password": "testpass",
+            "mongo_db": "testdb",
+            "mongo_api_key": "test_api_key",
+            "mongo_db_max_size": 512,
+            "aws_access_key_id": "test_access_key",
+            "aws_secret_access_key": "test_secret_key",
+            "aws_region": "us-east-1",
+            "s3_backup_bucket": "test-bucket",
+            "enable_nightly_backup": False,
+            "backup_hour": 2,
+            "backup_minute": 0,
+            "compression_method": CompressionMethod.GZIP,
+            "sentry_dsn": None,
+            "sentry_auth_token": None,
+            "node_env": "development",
+            "test_guilds": "1234567890",
+            "linode_ssh_host": None,
+            "linode_ssh_user": "root",
+            "linode_ssh_key_path": None,
+            "pm2_dexcom_app_name": "Dexcom",
+            "app_env": "development",
+            "nightscout_pm2_app_name": "dexcom",
+            "nightscout_pm2_ssh_user": None,
+            "nightscout_pm2_ssh_host": None,
+            "nightscout_pm2_ssh_key_path": None,
+            "nightscout_pm2_cmd": "npx pm2",
+            "bot_pm2_app_name": "nightscout-backup-bot-dev",
+            "bot_pm2_mode": "local",
+            "bot_pm2_ssh_user": None,
+            "bot_pm2_ssh_host": None,
+            "bot_pm2_ssh_key_path": None,
+            "bot_pm2_cmd": "npx pm2",
+        }
     )
 
 
@@ -156,7 +170,7 @@ def mock_discord_interaction() -> MagicMock:
 
 
 @pytest.fixture
-def sample_mongo_data() -> dict[str, Any]:
+def sample_mongo_data() -> dict[str, object]:
     """Create sample MongoDB export data."""
     return {
         "metadata": {

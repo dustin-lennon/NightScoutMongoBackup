@@ -1,7 +1,13 @@
-"""Unit tests for MongoService."""
+"""Unit tests for MongoService.
+
+Note: This test file uses mocks which are inherently dynamically typed (Any).
+This is acceptable in test files.
+"""
+
+# pyright: reportGeneralTypeIssues=false
 
 import json
-from typing import Any
+from typing import cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -24,7 +30,7 @@ async def test_connect_success(mongo_service: MongoService, mock_mongo_client: A
         await mongo_service.connect()
         assert mongo_service.client is not None
         assert mongo_service.db is not None
-        mock_mongo_client.admin.command.assert_called_once_with("ping")
+        mock_mongo_client.admin.command.assert_called_once_with("ping")  # type: ignore[attr-defined, misc]
 
 
 @pytest.mark.asyncio
@@ -48,23 +54,25 @@ async def test_disconnect(mongo_service: MongoService, mock_mongo_client: AsyncM
 
 @pytest.mark.asyncio
 async def test_export_all_collections(
-    mongo_service: MongoService, mock_mongo_database: AsyncMock, sample_mongo_data: dict[str, Any]
+    mongo_service: MongoService, mock_mongo_database: AsyncMock, sample_mongo_data: dict[str, object]
 ) -> None:
     """Test exporting all collections."""
     mongo_service.db = mock_mongo_database
 
     from typing import cast
 
-    async def mock_to_list(length: int | None = None) -> list[dict[str, Any]]:
-        return cast(list[dict[str, Any]], sample_mongo_data["collections"]["entries"])
+    async def mock_to_list(**_kwargs: object) -> list[dict[str, object]]:
+        collections = cast(dict[str, object], sample_mongo_data["collections"])
+        entries = cast(list[dict[str, object]], collections["entries"])
+        return entries
 
     cursor = MagicMock()
     cursor.to_list = mock_to_list
 
     collection = MagicMock()
-    collection.find.return_value = cursor
+    collection.find.return_value = cursor  # type: ignore[attr-defined, misc]
 
-    mock_mongo_database.__getitem__.return_value = collection
+    mock_mongo_database.__getitem__.return_value = collection  # type: ignore[attr-defined, misc]
 
     result = await mongo_service.export_collections()
 
@@ -79,16 +87,16 @@ async def test_export_specific_collections(mongo_service: MongoService, mock_mon
     """Test exporting specific collections."""
     mongo_service.db = mock_mongo_database
 
-    async def mock_to_list(length: int | None = None) -> list[dict[str, Any]]:
+    async def mock_to_list(**_kwargs: object) -> list[dict[str, object]]:
         return [{"_id": "1"}]
 
     cursor = MagicMock()
     cursor.to_list = mock_to_list
 
     collection = MagicMock()
-    collection.find.return_value = cursor
+    collection.find.return_value = cursor  # type: ignore[attr-defined, misc]
 
-    mock_mongo_database.__getitem__.return_value = collection
+    mock_mongo_database.__getitem__.return_value = collection  # type: ignore[attr-defined, misc]
 
     result = await mongo_service.export_collections(["entries"])
 
@@ -100,14 +108,14 @@ async def test_export_specific_collections(mongo_service: MongoService, mock_mon
 async def test_export_not_connected(mongo_service: MongoService) -> None:
     """Test export when not connected."""
     with pytest.raises(ValueError, match="Not connected to MongoDB"):
-        await mongo_service.export_collections()
+        _ = await mongo_service.export_collections()
 
 
-def test_serialize_to_json(mongo_service: MongoService, sample_mongo_data: dict[str, Any]) -> None:
+def test_serialize_to_json(mongo_service: MongoService, sample_mongo_data: dict[str, object]) -> None:
     """Test JSON serialization."""
     json_str = mongo_service.serialize_to_json(sample_mongo_data)
     assert isinstance(json_str, str)
-    parsed = json.loads(json_str)
+    parsed = cast(dict[str, dict[str, object]], json.loads(json_str))
     assert parsed["metadata"]["database"] == "testdb"
 
 
@@ -126,14 +134,14 @@ async def test_get_database_stats(mongo_service: MongoService, mock_mongo_databa
     stats = await mongo_service.get_database_stats()
     assert stats["db"] == "testdb"
     assert stats["collections"] == 3
-    mock_mongo_database.command.assert_called_once_with("dbStats")
+    mock_mongo_database.command.assert_called_once_with("dbStats")  # type: ignore[attr-defined, misc]
 
 
 @pytest.mark.asyncio
 async def test_get_database_stats_not_connected(mongo_service: MongoService) -> None:
     """Test stats when not connected."""
     with pytest.raises(ValueError, match="Not connected to MongoDB"):
-        await mongo_service.get_database_stats()
+        _ = await mongo_service.get_database_stats()
 
 
 @pytest.mark.asyncio
@@ -142,7 +150,7 @@ async def test_simulate_delete_many() -> None:
     service.db = MagicMock()
     service.client = MagicMock()
     mock_collection = MagicMock()
-    service.db.__getitem__.return_value = mock_collection
+    service.db.__getitem__.return_value = mock_collection  # type: ignore[attr-defined, misc]
 
     class Transaction:
         async def __aenter__(self) -> "Transaction":
@@ -180,4 +188,4 @@ async def test_simulate_delete_many_not_connected() -> None:
     service.db = None
     service.client = None
     with pytest.raises(ValueError):
-        await service.simulate_delete_many("foo", {})
+        _ = await service.simulate_delete_many("foo", {})

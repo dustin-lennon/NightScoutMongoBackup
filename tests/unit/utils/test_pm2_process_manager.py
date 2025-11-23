@@ -1,13 +1,16 @@
-"""Tests for PM2 process manager utilities."""
+"""Tests for PM2 process manager utilities.
+
+Note: This test file intentionally tests private functions (_execute_action) to verify
+internal implementation details. This is acceptable in test files.
+"""
+
+# pyright: reportPrivateUsage=false
 
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from nightscout_backup_bot.utils.pm2_process_manager import (
-    PM2Result,
-    _execute_action,
-)
+from nightscout_backup_bot.utils import pm2_process_manager
 
 
 @pytest.mark.asyncio
@@ -24,8 +27,8 @@ async def test_stop_action_with_success_indicator_in_stdout() -> None:
             )
         ),
     ):
-        result = await _execute_action("bot", "stop")
-        
+        result = await pm2_process_manager._execute_action("bot", "stop")
+
         assert result.ok is True
         assert result.status == "stopped"
         assert "[PM2] Applying action stopProcessId" in result.stdout
@@ -45,8 +48,8 @@ async def test_restart_action_with_success_indicator_in_stdout() -> None:
             )
         ),
     ):
-        result = await _execute_action("bot", "restart")
-        
+        result = await pm2_process_manager._execute_action("bot", "restart")
+
         assert result.ok is True
         assert result.status == "restarted"
         assert "[PM2] Applying action restartProcessId" in result.stdout
@@ -59,8 +62,8 @@ async def test_stop_action_with_zero_exit_code() -> None:
         "nightscout_backup_bot.utils.pm2_process_manager._run_for_target",
         AsyncMock(return_value=(0, "[PM2] Process stopped", "")),
     ):
-        result = await _execute_action("bot", "stop")
-        
+        result = await pm2_process_manager._execute_action("bot", "stop")
+
         assert result.ok is True
         assert result.status == "stopped"
 
@@ -72,8 +75,8 @@ async def test_stop_action_with_process_not_found() -> None:
         "nightscout_backup_bot.utils.pm2_process_manager._run_for_target",
         AsyncMock(return_value=(1, "", "process or namespace not found")),
     ):
-        result = await _execute_action("bot", "stop")
-        
+        result = await pm2_process_manager._execute_action("bot", "stop")
+
         assert result.ok is False
         assert result.status == "not_found"
 
@@ -85,8 +88,8 @@ async def test_stop_action_with_genuine_error() -> None:
         "nightscout_backup_bot.utils.pm2_process_manager._run_for_target",
         AsyncMock(return_value=(1, "Unknown error occurred", "Error: something went wrong")),
     ):
-        result = await _execute_action("bot", "stop")
-        
+        result = await pm2_process_manager._execute_action("bot", "stop")
+
         assert result.ok is False
         assert result.status == "error"
 
@@ -99,8 +102,8 @@ async def test_start_action_does_not_use_success_indicator_fallback() -> None:
         "nightscout_backup_bot.utils.pm2_process_manager._run_for_target",
         AsyncMock(return_value=(1, "[PM2] Process started", "")),
     ):
-        result = await _execute_action("bot", "start")
-        
+        result = await pm2_process_manager._execute_action("bot", "start")
+
         # Should fail because exit code is non-zero and start doesn't have success indicator logic
         assert result.ok is False
         assert result.status == "error"

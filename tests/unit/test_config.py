@@ -1,7 +1,6 @@
 """Unit tests for configuration and settings."""
 
 import os
-import urllib.parse
 from unittest.mock import patch
 
 from nightscout_backup_bot.config import CompressionMethod, Settings
@@ -27,7 +26,7 @@ class TestMongoConnectionString:
                 "S3_BACKUP_BUCKET": "test_bucket",
             },
         ):
-            settings = Settings()  # type: ignore[call-arg]
+            settings = Settings.model_validate({})
             connection_string = settings.mongo_connection_string
 
             # Should match MongoDB Atlas format (no database in path)
@@ -52,7 +51,7 @@ class TestMongoConnectionString:
                 "S3_BACKUP_BUCKET": "test_bucket",
             },
         ):
-            settings = Settings()  # type: ignore[call-arg]
+            settings = Settings.model_validate({})
             connection_string = settings.mongo_connection_string
 
             # Password should be URL-encoded
@@ -78,7 +77,7 @@ class TestMongoConnectionString:
                 "S3_BACKUP_BUCKET": "test_bucket",
             },
         ):
-            settings = Settings()  # type: ignore[call-arg]
+            settings = Settings.model_validate({})
             connection_string = settings.mongo_connection_string
 
             # Username should be URL-encoded
@@ -104,7 +103,7 @@ class TestMongoConnectionString:
                 "S3_BACKUP_BUCKET": "test_bucket",
             },
         ):
-            settings = Settings()  # type: ignore[call-arg]
+            settings = Settings.model_validate({})
             connection_string = settings.mongo_connection_string
 
             # Spaces should be URL-encoded as %20
@@ -127,7 +126,7 @@ class TestMongoConnectionString:
                 "S3_BACKUP_BUCKET": "test_bucket",
             },
         ):
-            settings = Settings()  # type: ignore[call-arg]
+            settings = Settings.model_validate({})
             connection_string = settings.mongo_connection_string
 
             # Percent should be double-encoded
@@ -150,7 +149,7 @@ class TestMongoConnectionString:
                 "S3_BACKUP_BUCKET": "test_bucket",
             },
         ):
-            settings = Settings()  # type: ignore[call-arg]
+            settings = Settings.model_validate({})
             connection_string = settings.mongo_connection_string
 
             # MongoDB Atlas format: no database in path, use /? for query params
@@ -175,24 +174,11 @@ class TestMongoConnectionString:
                 "S3_BACKUP_BUCKET": "test_bucket",
             },
         ):
-            settings = Settings()  # type: ignore[call-arg]
+            settings = Settings.model_validate({})
             connection_string = settings.mongo_connection_string
 
             assert "retryWrites=true" in connection_string
             assert "w=majority" in connection_string
-
-    @property
-    def mongo_connection_string(self) -> str:
-        """Return the MongoDB Atlas connection string (example values)."""
-        # Example values for demonstration; replace with actual test values if needed
-        mongo_username = "testuser"
-        mongo_password = "testpass"
-        mongo_host = "cluster.mongodb.net"
-        user = urllib.parse.quote(mongo_username, safe="")
-        pwd = urllib.parse.quote(mongo_password, safe="")
-        host = mongo_host
-        # MongoDB Atlas format: no database in path, use /? for query params
-        return f"mongodb+srv://{user}:{pwd}@{host}/?" "retryWrites=true&w=majority"
 
 
 class TestCompressionMethod:
@@ -220,7 +206,7 @@ class TestCompressionMethod:
                 "S3_BACKUP_BUCKET": "test_bucket",
             },
         ):
-            settings = Settings()  # type: ignore[call-arg]
+            settings = Settings.model_validate({})
             assert settings.compression_method == CompressionMethod.GZIP
 
     def test_compression_method_from_env_gzip(self) -> None:
@@ -241,7 +227,7 @@ class TestCompressionMethod:
                 "COMPRESSION_METHOD": "gzip",
             },
         ):
-            settings = Settings()  # type: ignore[call-arg]
+            settings = Settings.model_validate({})
             assert settings.compression_method == CompressionMethod.GZIP
 
     def test_compression_method_from_env_brotli(self) -> None:
@@ -262,7 +248,7 @@ class TestCompressionMethod:
                 "COMPRESSION_METHOD": "brotli",
             },
         ):
-            settings = Settings()  # type: ignore[call-arg]
+            settings = Settings.model_validate({})
             assert settings.compression_method == CompressionMethod.BROTLI
 
     def test_compression_method_enum_string_comparison(self) -> None:
