@@ -140,7 +140,7 @@ class NightScoutBackupBot(commands.Bot):
         await self.wait_until_ready()
 
         # Calculate time until next backup
-        now = datetime.datetime.now()
+        now = datetime.datetime.now(datetime.UTC)
         target_time = now.replace(
             hour=settings.backup_hour,
             minute=settings.backup_minute,
