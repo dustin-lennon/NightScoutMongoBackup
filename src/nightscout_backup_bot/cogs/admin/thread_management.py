@@ -39,122 +39,121 @@ class ThreadManagement(commands.Cog):
             ephemeral=True,
         )
 
-    async def manage_threads_impl(self, channel: disnake.TextChannel) -> tuple[int, int]:
-        now = datetime.datetime.now(datetime.UTC)
-        archived_count = 0
-        deleted_count = 0
-
-        # Get active (non-archived) threads
-        active_threads = list(channel.threads)
-
-        # Fetch archived threads separately - channel.threads only returns active threads
-        # We need to fetch archived threads to ensure we can delete old archived threads (8+ days)
-        # Discord API: GET /channels/{channel.id}/threads/archived/private
+    async def _fetch_archived_threads(self, channel: disnake.TextChannel) -> list[disnake.Thread]:
+        """Fetch archived private threads from Discord API with pagination."""
         archived_threads: list[disnake.Thread] = []
-        if channel.guild and hasattr(self.bot, "http") and self.bot.http:
-            try:
-                # Use HTTP client to fetch archived private threads directly from Discord API
-                from disnake.http import Route
 
-                # Make direct API request to Discord's archived threads endpoint
-                # Discord API expects ISO8601 timestamp string for 'before' parameter, not thread ID
-                before: str | None = None
-                while True:
-                    # Build the API endpoint URL
-                    url = f"/channels/{channel.id}/threads/archived/private"
-                    params: dict[str, int | str] = {"limit": 100}
-                    if before:
-                        params["before"] = before
+        if not channel.guild or not hasattr(self.bot, "http") or not self.bot.http:
+            return archived_threads
 
-                    # Make the HTTP request
-                    route = Route("GET", url)
-                    # Type ignore needed as HTTP client types are not fully typed
-                    data: dict[str, object] = await self.bot.http.request(route, params=params)  # type: ignore[arg-type, assignment]
+        try:
+            before: str | None = None
+            while True:
+                before = await self._fetch_archived_threads_page(channel, archived_threads, before)
+                if before is None:
+                    break
 
-                    # Extract threads from response
-                    threads_data_raw = data.get("threads", [])  # type: ignore[assignment]
-                    if not isinstance(threads_data_raw, list):
-                        break
+            return archived_threads
+        except ImportError:
+            logger.debug("disnake.http.Route not available, archived threads will not be fetched")
+            return archived_threads
+        except Exception as e:
+            logger.warning("Failed to fetch archived threads", error=str(e), channel_id=channel.id)
+            return archived_threads
 
-                    # Process each archived thread
-                    # Type ignore needed as HTTP response types are not fully typed
-                    # Cast list to help type checker understand element types
-                    threads_list = cast(list[object], threads_data_raw)
-                    for thread_data_item in threads_list:  # type: ignore[assignment]
-                        # Type check to ensure it's a dict before processing
-                        # Cast to help type checker understand the type after isinstance check
-                        if not isinstance(thread_data_item, dict) or "id" not in thread_data_item:
-                            continue
-                        thread_data_raw = cast(dict[str, object], thread_data_item)
+    async def _fetch_archived_threads_page(
+        self, channel: disnake.TextChannel, archived_threads: list[disnake.Thread], before: str | None
+    ) -> str | None:
+        """Fetch a single page of archived threads and return the next 'before' value."""
+        from disnake.http import Route
 
-                        thread_id_str = str(thread_data_raw["id"])
-                        try:
-                            thread_id = int(thread_id_str)
-                        except (ValueError, TypeError):
-                            continue
+        url = f"/channels/{channel.id}/threads/archived/private"
+        params: dict[str, int | str] = {"limit": 100}
+        if before:
+            params["before"] = before
 
-                        try:
-                            # Try to get thread from cache first
-                            thread = channel.guild.get_thread(thread_id)
-                            if thread is None:
-                                # Fetch the thread if not in cache
-                                fetched_channel = await channel.guild.fetch_channel(thread_id)
-                                if not isinstance(fetched_channel, disnake.Thread):
-                                    continue
-                                thread = fetched_channel
+        route = Route("GET", url)
+        data: dict[str, object] = await self.bot.http.request(route, params=params)  # type: ignore[arg-type, assignment]
 
-                            if thread.type == disnake.ChannelType.private_thread:
-                                archived_threads.append(thread)
-                        except Exception:
-                            # Thread might have been deleted, skip it
-                            logger.debug("Could not fetch archived thread", thread_id=thread_id)
-                            continue
+        threads_data_raw = data.get("threads", [])  # type: ignore[assignment]
+        if not isinstance(threads_data_raw, list):
+            return None
 
-                    # Check if there are more threads to fetch
-                    has_more_raw = data.get("has_more", False)  # type: ignore[assignment]
-                    has_more = bool(has_more_raw) if isinstance(has_more_raw, bool) else False
-                    if not has_more:
-                        break
+        threads_list = cast(list[object], threads_data_raw)
+        for thread_data_item in threads_list:  # type: ignore[assignment]
+            thread = await self._parse_thread_from_data(thread_data_item, channel)
+            if thread and thread.type == disnake.ChannelType.private_thread:
+                archived_threads.append(thread)
 
-                    # Set before to the oldest thread's archive_timestamp (ISO8601) for next iteration
-                    # Discord API requires ISO8601 timestamp string, not thread ID
-                    if threads_list:
-                        last_thread_item = threads_list[-1]
-                        # Cast to help type checker understand the type after isinstance check
-                        if isinstance(last_thread_item, dict):
-                            last_thread_raw = cast(dict[str, object], last_thread_item)
-                            # Extract archive_timestamp from thread_metadata
-                            thread_metadata = last_thread_raw.get("thread_metadata")
-                            if isinstance(thread_metadata, dict):
-                                thread_metadata_dict = cast(dict[str, object], thread_metadata)
-                                archive_timestamp = thread_metadata_dict.get("archive_timestamp")
-                                if isinstance(archive_timestamp, str):
-                                    before = archive_timestamp
-                                else:
-                                    # If archive_timestamp is not a string, we can't paginate
-                                    logger.warning(
-                                        "archive_timestamp is not a string, cannot paginate further",
-                                        thread_id=last_thread_raw.get("id"),
-                                    )
-                                    break
-                            else:
-                                # No thread_metadata means we can't get the timestamp
-                                logger.warning(
-                                    "Thread missing thread_metadata, cannot paginate further",
-                                    thread_id=last_thread_raw.get("id"),
-                                )
-                                break
-                        else:
-                            break
-                    else:
-                        break
-            except ImportError:
-                # Route not available - this is expected if disnake version doesn't support it
-                logger.debug("disnake.http.Route not available, archived threads will not be fetched")
-            except Exception as e:
-                logger.warning("Failed to fetch archived threads", error=str(e), channel_id=channel.id)
+        has_more_raw = data.get("has_more", False)  # type: ignore[assignment]
+        has_more = bool(has_more_raw) if isinstance(has_more_raw, bool) else False
+        if not has_more:
+            return None
 
-        # Combine active and archived threads, using a set to deduplicate by thread ID
+        return self._extract_next_before_value(threads_list)
+
+    async def _parse_thread_from_data(
+        self, thread_data_item: object, channel: disnake.TextChannel
+    ) -> disnake.Thread | None:
+        """Parse a thread object from Discord API response data."""
+        if not isinstance(thread_data_item, dict) or "id" not in thread_data_item:
+            return None
+
+        thread_data_raw = cast(dict[str, object], thread_data_item)
+        thread_id_str = str(thread_data_raw["id"])
+
+        try:
+            thread_id = int(thread_id_str)
+        except (ValueError, TypeError):
+            return None
+
+        try:
+            thread = channel.guild.get_thread(thread_id) if channel.guild else None
+            if thread is None and channel.guild:
+                fetched_channel = await channel.guild.fetch_channel(thread_id)
+                if not isinstance(fetched_channel, disnake.Thread):
+                    return None
+                thread = fetched_channel
+            return thread
+        except Exception:
+            logger.debug("Could not fetch archived thread", thread_id=thread_id)
+            return None
+
+    def _extract_next_before_value(self, threads_list: list[object]) -> str | None:
+        """Extract the 'before' timestamp value for pagination from the last thread."""
+        if not threads_list:
+            return None
+
+        last_thread_item = threads_list[-1]
+        if not isinstance(last_thread_item, dict):
+            return None
+
+        last_thread_raw = cast(dict[str, object], last_thread_item)
+        thread_metadata = last_thread_raw.get("thread_metadata")
+
+        if not isinstance(thread_metadata, dict):
+            logger.warning(
+                "Thread missing thread_metadata, cannot paginate further",
+                thread_id=last_thread_raw.get("id"),
+            )
+            return None
+
+        thread_metadata_dict = cast(dict[str, object], thread_metadata)
+        archive_timestamp = thread_metadata_dict.get("archive_timestamp")
+
+        if isinstance(archive_timestamp, str):
+            return archive_timestamp
+
+        logger.warning(
+            "archive_timestamp is not a string, cannot paginate further",
+            thread_id=last_thread_raw.get("id"),
+        )
+        return None
+
+    def _combine_and_deduplicate_threads(
+        self, active_threads: list[disnake.Thread], archived_threads: list[disnake.Thread]
+    ) -> list[disnake.Thread]:
+        """Combine active and archived threads, deduplicating by thread ID."""
         seen_thread_ids: set[int] = set()
         all_threads: list[disnake.Thread] = []
 
@@ -168,10 +167,19 @@ class ThreadManagement(commands.Cog):
                 seen_thread_ids.add(thread.id)
                 all_threads.append(thread)
 
-        for thread in all_threads:
+        return all_threads
+
+    async def _process_threads(self, threads: list[disnake.Thread], now: datetime.datetime) -> tuple[int, int]:
+        """Process threads: delete old ones (8+ days) and archive others (1+ days)."""
+        archived_count = 0
+        deleted_count = 0
+
+        for thread in threads:
             if thread.type != disnake.ChannelType.private_thread:
                 continue
+
             age = now - thread.created_at
+
             # Check for deletion first (8+ days), regardless of archived status
             if age.days >= 8:
                 await thread.delete(reason="Download link no longer exists.. removing thread")
@@ -180,7 +188,25 @@ class ThreadManagement(commands.Cog):
             elif age.days >= 1 and not thread.archived:
                 _ = await thread.edit(archived=True, reason="Archiving backup thread after open 1 day or longer...")
                 archived_count += 1
+
         return archived_count, deleted_count
+
+    async def manage_threads_impl(self, channel: disnake.TextChannel) -> tuple[int, int]:
+        """Main implementation for managing threads: fetch, combine, and process."""
+        now = datetime.datetime.now(datetime.UTC)
+
+        # Get active (non-archived) threads
+        active_threads = list(channel.threads)
+
+        # Fetch archived threads separately - channel.threads only returns active threads
+        # We need to fetch archived threads to ensure we can delete old archived threads (8+ days)
+        archived_threads = await self._fetch_archived_threads(channel)
+
+        # Combine active and archived threads, deduplicating by thread ID
+        all_threads = self._combine_and_deduplicate_threads(active_threads, archived_threads)
+
+        # Process threads: delete old ones and archive others
+        return await self._process_threads(all_threads, now)
 
 
 def setup(bot: NightScoutBackupBot) -> None:
