@@ -277,3 +277,29 @@ async def test_manage_threads_exactly_eight_days(monkeypatch: pytest.MonkeyPatch
     t1.edit.assert_not_awaited()
     assert archived_count == 0
     assert deleted_count == 1
+
+
+@pytest.mark.asyncio
+async def test_delete_archived_thread_unarchives_first(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test that archived threads are unarchived before deletion."""
+    now = datetime.datetime.now(datetime.UTC)
+    # Thread 9 days old and already archived
+    t1 = DummyThread(
+        created_at=now - datetime.timedelta(days=9),
+        archived=True,
+        thread_type=disnake.ChannelType.private_thread,
+    )
+
+    channel = DummyChannel([t1])
+    bot = MagicMock()
+    cog = ThreadManagement(bot)
+
+    monkeypatch.setattr("nightscout_backup_bot.config.settings.backup_channel_id", "123")
+
+    archived_count, deleted_count = await cog.manage_threads_impl(channel)  # type: ignore
+
+    # Should unarchive first, then delete
+    t1.edit.assert_awaited_once_with(archived=False, reason="Unarchiving thread before deletion...")
+    t1.delete.assert_awaited_once_with(reason="Download link no longer exists.. removing thread")
+    assert archived_count == 0
+    assert deleted_count == 1

@@ -182,6 +182,9 @@ class ThreadManagement(commands.Cog):
 
             # Check for deletion first (8+ days), regardless of archived status
             if age.days >= 8:
+                # Discord API requires unarchiving before deletion
+                if thread.archived:
+                    _ = await thread.edit(archived=False, reason="Unarchiving thread before deletion...")
                 await thread.delete(reason="Download link no longer exists.. removing thread")
                 deleted_count += 1
             # Then check for archiving (1+ days), but only if not already archived
