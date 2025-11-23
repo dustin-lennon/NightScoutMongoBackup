@@ -15,7 +15,7 @@ class TestFileService:
         """Create FileService instance with temp directory."""
         return FileService(backup_dir=temp_backup_dir)
 
-    def test_backup_directory_creation(self, file_service: FileService, temp_backup_dir: Path) -> None:
+    def test_backup_directory_creation(self, temp_backup_dir: Path) -> None:
         """Test backup directory is created."""
         assert temp_backup_dir.exists()
         assert temp_backup_dir.is_dir()
@@ -48,7 +48,7 @@ class TestFileService:
     async def test_delete_file(self, file_service: FileService, temp_backup_dir: Path) -> None:
         """Test deleting file."""
         filepath = temp_backup_dir / "test.txt"
-        filepath.write_text("test")
+        _ = filepath.write_text("test")
 
         assert filepath.exists()
         await file_service.delete_file(filepath)
@@ -66,7 +66,7 @@ class TestFileService:
         # Create 10 backup files
         for i in range(10):
             filepath = temp_backup_dir / f"nightscout-backup-{i}.json"
-            filepath.write_text(f"backup {i}")
+            _ = filepath.write_text(f"backup {i}")
 
         # Keep only 5 latest
         deleted_count = await file_service.cleanup_old_backups(keep_latest=5)
@@ -81,7 +81,7 @@ class TestFileService:
         # Create 3 backup files
         for i in range(3):
             filepath = temp_backup_dir / f"nightscout-backup-{i}.json"
-            filepath.write_text(f"backup {i}")
+            _ = filepath.write_text(f"backup {i}")
 
         deleted_count = await file_service.cleanup_old_backups(keep_latest=5)
 

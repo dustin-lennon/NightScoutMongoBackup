@@ -10,10 +10,10 @@ def test_valid_date() -> None:
 
 def test_invalid_date_format() -> None:
     with pytest.raises(DateValidationError):
-        validate_yyyy_mm_dd("11-11-2025")
+        _ = validate_yyyy_mm_dd("11-11-2025")
     with pytest.raises(DateValidationError):
-        validate_yyyy_mm_dd("2025/11/11")
+        _ = validate_yyyy_mm_dd("2025/11/11")
     with pytest.raises(DateValidationError):
-        validate_yyyy_mm_dd("2025-13-01")
+        _ = validate_yyyy_mm_dd("2025-13-01")
     with pytest.raises(DateValidationError):
-        validate_yyyy_mm_dd("")
+        _ = validate_yyyy_mm_dd("")

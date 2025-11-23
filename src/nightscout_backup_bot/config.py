@@ -1,13 +1,14 @@
 """Configuration module for NightScout Backup Bot using Pydantic Settings."""
 
 from enum import Enum
+from typing import ClassVar
 
 from dotenv_vault import load_dotenv  # type: ignore[import-untyped]
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Load environment variables from .env file or .env.vault (if DOTENV_KEY is set)
-load_dotenv()
+_ = load_dotenv()
 
 
 class CompressionMethod(str, Enum):
@@ -20,7 +21,7 @@ class CompressionMethod(str, Enum):
 class Settings(BaseSettings):
     """Application settings loaded from environment variables and .env file."""
 
-    model_config = SettingsConfigDict(
+    model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
@@ -148,7 +149,9 @@ def get_settings() -> Settings:
     """Get or create settings instance (lazy loading)."""
     global _settings
     if _settings is None:
-        _settings = Settings()  # type: ignore[call-arg]
+        # Pydantic Settings loads values from environment variables automatically
+        # Using model_validate to avoid type checker errors about missing arguments
+        _settings = Settings.model_validate({})  # type: ignore[call-overload]
     return _settings
 
 
