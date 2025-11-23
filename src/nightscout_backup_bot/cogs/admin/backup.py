@@ -16,7 +16,10 @@ logger = StructuredLogger(__name__)
 class BackupCog(commands.Cog):
     """A cog for handling the backup command."""
 
-    def __init__(self, bot: NightScoutBackupBot):
+    bot: NightScoutBackupBot
+    backup_service: BackupService
+
+    def __init__(self, bot: NightScoutBackupBot) -> None:
         """Initialize the BackupCog."""
         self.bot = bot
         self.backup_service = BackupService()

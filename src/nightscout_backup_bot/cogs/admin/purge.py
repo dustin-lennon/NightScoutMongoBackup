@@ -1,10 +1,10 @@
 """Admin command cog for purging MongoDB collections."""
 
-from typing import Any
+from typing import Literal, cast
 
 import disnake
 from disnake.ext import commands
-from disnake.ui import button  # type: ignore
+from disnake.ui import button  # pyright: ignore[reportUnknownVariableType]
 
 from nightscout_backup_bot.bot import NightScoutBackupBot
 from nightscout_backup_bot.logging_config import StructuredLogger
@@ -15,9 +15,15 @@ from nightscout_backup_bot.utils.date_utils import DateValidationError, validate
 
 logger = StructuredLogger(__name__)
 
+# Collection choices for purge command
+COLLECTION_CHOICES = ("Entries", "Device Status", "Treatments")
+
 
 class PurgeCog(commands.Cog):
     """Cog for purging MongoDB collections."""
+
+    bot: NightScoutBackupBot
+    mongo_service: MongoService
 
     def __init__(self, bot: NightScoutBackupBot) -> None:
         """Initializes the Purge cog."""
@@ -32,11 +38,15 @@ class PurgeCog(commands.Cog):
     async def purge_collection(
         self,
         inter: disnake.ApplicationCommandInteraction[NightScoutBackupBot],
-        collection: Any = commands.Param(  # type: ignore
-            choices=["Entries", "Device Status", "Treatments"],
+        collection: Literal[
+            "Entries", "Device Status", "Treatments"
+        ] = commands.Param(  # pyright: ignore[reportUnknownMemberType, reportCallInDefaultInitializer]
+            choices=COLLECTION_CHOICES,
             description="Collection to purge (Entries, Device Status, Treatments)",
         ),
-        date: str = commands.Param(description="Date to query (YYYY-MM-DD format, e.g., 2024-01-01)"),  # type: ignore
+        date: str = commands.Param(  # pyright: ignore[reportUnknownMemberType, reportCallInDefaultInitializer]
+            description="Date to query (YYYY-MM-DD format, e.g., 2024-01-01)"
+        ),
     ) -> None:
         """
         Purge documents from a MongoDB collection by date, with confirmation.
@@ -65,7 +75,9 @@ class PurgeCog(commands.Cog):
             collection_name = get_internal_collection_name(str(collection))
             collection_obj = self.mongo_service.db[collection_name]
             filter_query = {"date": {"$lte": date_to_millis}}
-            count = await self.mongo_service.simulate_delete_many(collection_name, filter_query)
+            count = await self.mongo_service.simulate_delete_many(
+                collection_name, cast(dict[str, object], filter_query)
+            )
 
             embed = disnake.Embed(
                 title="Confirm Purge",
@@ -81,8 +93,8 @@ class PurgeCog(commands.Cog):
                 @button(label="Yes", style=disnake.ButtonStyle.danger)
                 async def yes(
                     self,
-                    button: disnake.ui.Button,  # type: ignore
-                    interaction: disnake.MessageInteraction,  # type: ignore
+                    _button: disnake.ui.Button["ConfirmView"],  # type: ignore
+                    interaction: disnake.MessageInteraction[NightScoutBackupBot],  # type: ignore
                 ) -> None:
                     self.value = True
                     self.stop()
@@ -91,8 +103,8 @@ class PurgeCog(commands.Cog):
                 @button(label="No", style=disnake.ButtonStyle.secondary)
                 async def no(
                     self,
-                    button: disnake.ui.Button,  # type: ignore
-                    interaction: disnake.MessageInteraction,  # type: ignore
+                    _button: disnake.ui.Button["ConfirmView"],  # type: ignore
+                    interaction: disnake.MessageInteraction[NightScoutBackupBot],  # type: ignore
                 ) -> None:
                     self.value = False
                     self.stop()
@@ -100,7 +112,7 @@ class PurgeCog(commands.Cog):
 
             view = ConfirmView()
             await inter.send(embed=embed, view=view, ephemeral=False)
-            await view.wait()
+            _ = await view.wait()
 
             if view.value:
                 result = await collection_obj.delete_many(filter_query)

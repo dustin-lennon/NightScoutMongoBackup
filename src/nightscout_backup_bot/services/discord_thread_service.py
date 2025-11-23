@@ -1,7 +1,5 @@
 """Discord thread service for progress updates."""
 
-from typing import Any
-
 import disnake
 
 from ..logging_config import StructuredLogger
@@ -11,6 +9,8 @@ logger = StructuredLogger("services.discord_thread")
 
 class DiscordThreadService:
     """Service for managing Discord threads for backup progress."""
+
+    channel: disnake.TextChannel
 
     def __init__(self, channel: disnake.TextChannel) -> None:
         """
@@ -53,7 +53,7 @@ class DiscordThreadService:
             raise
 
     @staticmethod
-    async def send_progress(thread: disnake.Thread, message: str, **context: Any) -> disnake.Message:
+    async def send_progress(thread: disnake.Thread, message: str, **context: object) -> disnake.Message:
         """
         Send progress update to thread.
 
@@ -98,7 +98,7 @@ class DiscordThreadService:
     async def send_completion(
         thread: disnake.Thread,
         download_url: str,
-        stats: dict[str, Any],
+        stats: dict[str, object],
     ) -> disnake.Message:
         """
         Send backup completion message with download link.
@@ -118,20 +118,20 @@ class DiscordThreadService:
                 color=disnake.Color.green(),
             )
 
-            embed.add_field(name="Collections", value=str(stats.get("collections", "N/A")), inline=True)
-            embed.add_field(name="Documents", value=str(stats.get("documents", "N/A")), inline=True)
-            embed.add_field(name="Original Size", value=stats.get("original_size", "N/A"), inline=True)
-            embed.add_field(name="Compressed Size", value=stats.get("compressed_size", "N/A"), inline=True)
-            embed.add_field(name="Compression", value=stats.get("compression_ratio", "N/A"), inline=True)
-            embed.add_field(name="Method", value=stats.get("compression_method", "N/A"), inline=True)
+            _ = embed.add_field(name="Collections", value=str(stats.get("collections", "N/A")), inline=True)
+            _ = embed.add_field(name="Documents", value=str(stats.get("documents", "N/A")), inline=True)
+            _ = embed.add_field(name="Original Size", value=stats.get("original_size", "N/A"), inline=True)
+            _ = embed.add_field(name="Compressed Size", value=stats.get("compressed_size", "N/A"), inline=True)
+            _ = embed.add_field(name="Compression", value=stats.get("compression_ratio", "N/A"), inline=True)
+            _ = embed.add_field(name="Method", value=stats.get("compression_method", "N/A"), inline=True)
 
-            embed.add_field(
+            _ = embed.add_field(
                 name="Download Link",
                 value=f"[Click here to download]({download_url})",
                 inline=False,
             )
 
-            embed.set_footer(text="⚠️ Link expires in 7 days per S3 lifecycle policy")
+            _ = embed.set_footer(text="⚠️ Link expires in 7 days per S3 lifecycle policy")
 
             sent_message = await thread.send(embed=embed)
             logger.info("Sent completion message", thread_id=thread.id)

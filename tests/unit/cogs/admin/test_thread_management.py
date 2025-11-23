@@ -13,17 +13,21 @@ class DummyThread:
         created_at: datetime.datetime,
         archived: bool = False,
         thread_type: disnake.ChannelType = disnake.ChannelType.public_thread,
+        thread_id: int | None = None,
     ):
         self.created_at = created_at
         self.archived = archived
         self.type = thread_type
+        self.id = thread_id if thread_id is not None else id(self)  # Use object id as fallback
         self.edit = AsyncMock()
         self.delete = AsyncMock()
 
 
 class DummyChannel:
-    def __init__(self, threads: list[DummyThread]):
+    def __init__(self, threads: list[DummyThread], channel_id: int = 123):
         self.threads = threads
+        self.id = channel_id
+        self.guild = None  # None to skip archived thread fetching in tests
 
 
 @pytest.mark.asyncio
@@ -103,4 +107,173 @@ async def test_delete_threads(monkeypatch: pytest.MonkeyPatch) -> None:
     t2.delete.assert_not_awaited()
 
     assert archived_count == 1
+    assert deleted_count == 1
+
+
+@pytest.mark.asyncio
+async def test_manage_threads_command_success(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test the manage_threads slash command."""
+    now = datetime.datetime.now(datetime.UTC)
+    t1 = DummyThread(
+        created_at=now - datetime.timedelta(days=2), archived=False, thread_type=disnake.ChannelType.private_thread
+    )
+
+    # Make channel a proper TextChannel instance
+    mock_text_channel = MagicMock(spec=disnake.TextChannel)
+    mock_text_channel.threads = [t1]
+    mock_text_channel.id = 123
+
+    bot = MagicMock()
+    cog = ThreadManagement(bot)
+    inter = MagicMock()
+    inter.response.defer = AsyncMock()
+    inter.followup.send = AsyncMock()
+    bot.get_channel.return_value = mock_text_channel
+
+    monkeypatch.setattr("nightscout_backup_bot.config.settings.backup_channel_id", "123")
+
+    # Call via callback to properly invoke the slash command
+    await cog.manage_threads.callback(cog, inter)  # type: ignore
+
+    inter.response.defer.assert_called_once()
+    inter.followup.send.assert_called_once()
+    call_args = inter.followup.send.call_args[0][0]
+    assert "Thread management complete" in call_args
+    assert "Archived threads: 1" in call_args
+    assert "Deleted threads: 0" in call_args
+
+
+@pytest.mark.asyncio
+async def test_manage_threads_channel_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test manage_threads when channel is not found."""
+    bot = MagicMock()
+    cog = ThreadManagement(bot)
+    inter = MagicMock()
+    inter.response.defer = AsyncMock()
+    inter.followup.send = AsyncMock()
+    bot.get_channel.return_value = None
+
+    monkeypatch.setattr("nightscout_backup_bot.config.settings.backup_channel_id", "123")
+
+    # Call via callback to properly invoke the slash command
+    await cog.manage_threads.callback(cog, inter)  # type: ignore
+
+    inter.followup.send.assert_called_once()
+    call_args = inter.followup.send.call_args[0][0]
+    assert "Backup channel not found" in call_args
+
+
+@pytest.mark.asyncio
+async def test_manage_threads_not_text_channel(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test manage_threads when channel is not a text channel."""
+    bot = MagicMock()
+    cog = ThreadManagement(bot)
+    inter = MagicMock()
+    inter.response.defer = AsyncMock()
+    inter.followup.send = AsyncMock()
+    # Return a non-text channel (e.g., voice channel)
+    mock_voice_channel = MagicMock()
+    bot.get_channel.return_value = mock_voice_channel
+
+    monkeypatch.setattr("nightscout_backup_bot.config.settings.backup_channel_id", "123")
+
+    # Call via callback to properly invoke the slash command
+    await cog.manage_threads.callback(cog, inter)  # type: ignore
+
+    inter.followup.send.assert_called_once()
+    call_args = inter.followup.send.call_args[0][0]
+    assert "not a text channel" in call_args
+
+
+@pytest.mark.asyncio
+async def test_manage_threads_skips_public_threads(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test that public threads are skipped."""
+    now = datetime.datetime.now(datetime.UTC)
+    # Public thread older than 1 day - should be skipped
+    t1 = DummyThread(
+        created_at=now - datetime.timedelta(days=2), archived=False, thread_type=disnake.ChannelType.public_thread
+    )
+
+    channel = DummyChannel([t1])
+    bot = MagicMock()
+    cog = ThreadManagement(bot)
+
+    monkeypatch.setattr("nightscout_backup_bot.config.settings.backup_channel_id", "123")
+
+    archived_count, deleted_count = await cog.manage_threads_impl(channel)  # type: ignore
+
+    t1.edit.assert_not_awaited()
+    t1.delete.assert_not_awaited()
+    assert archived_count == 0
+    assert deleted_count == 0
+
+
+@pytest.mark.asyncio
+async def test_manage_threads_deduplicates_threads(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test that duplicate threads are deduplicated."""
+    now = datetime.datetime.now(datetime.UTC)
+    t1 = DummyThread(
+        created_at=now - datetime.timedelta(days=2),
+        archived=False,
+        thread_type=disnake.ChannelType.private_thread,
+        thread_id=123,
+    )
+
+    # Same thread in both active and archived lists
+    channel = DummyChannel([t1])
+    bot = MagicMock()
+    cog = ThreadManagement(bot)
+
+    monkeypatch.setattr("nightscout_backup_bot.config.settings.backup_channel_id", "123")
+
+    archived_count, deleted_count = await cog.manage_threads_impl(channel)  # type: ignore
+
+    # Should only archive once, not twice
+    t1.edit.assert_called_once()
+    assert archived_count == 1
+    assert deleted_count == 0
+
+
+@pytest.mark.asyncio
+async def test_manage_threads_exactly_one_day(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test threads exactly one day old are archived."""
+    now = datetime.datetime.now(datetime.UTC)
+    # Thread exactly 1 day old
+    t1 = DummyThread(
+        created_at=now - datetime.timedelta(days=1), archived=False, thread_type=disnake.ChannelType.private_thread
+    )
+
+    channel = DummyChannel([t1])
+    bot = MagicMock()
+    cog = ThreadManagement(bot)
+
+    monkeypatch.setattr("nightscout_backup_bot.config.settings.backup_channel_id", "123")
+
+    archived_count, deleted_count = await cog.manage_threads_impl(channel)  # type: ignore
+
+    t1.edit.assert_awaited_once_with(archived=True, reason="Archiving backup thread after open 1 day or longer...")
+    assert archived_count == 1
+    assert deleted_count == 0
+
+
+@pytest.mark.asyncio
+async def test_manage_threads_exactly_eight_days(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test threads exactly 8 days old are deleted."""
+    now = datetime.datetime.now(datetime.UTC)
+    # Thread exactly 8 days old
+    t1 = DummyThread(
+        created_at=now - datetime.timedelta(days=8), archived=False, thread_type=disnake.ChannelType.private_thread
+    )
+
+    channel = DummyChannel([t1])
+    bot = MagicMock()
+    cog = ThreadManagement(bot)
+
+    monkeypatch.setattr("nightscout_backup_bot.config.settings.backup_channel_id", "123")
+
+    archived_count, deleted_count = await cog.manage_threads_impl(channel)  # type: ignore
+
+    t1.delete.assert_awaited_once_with(reason="Download link no longer exists.. removing thread")
+    t1.edit.assert_not_awaited()
+    assert archived_count == 0
     assert deleted_count == 1
