@@ -92,6 +92,15 @@ class Settings(BaseSettings):
     bot_pm2_ssh_key_path: str | None = Field(None, description="Path to SSH key for bot's production server")
     bot_pm2_cmd: str = Field("npx pm2", description="PM2 command/path for the bot")
 
+    # Backup API Configuration
+    backup_api_cors_origins: str = Field(
+        "http://localhost:3000", description="Comma-separated list of allowed CORS origins for the backup API"
+    )
+    enable_api_in_bot: bool = Field(
+        False,
+        description="If True, run the API server in the same process as the bot (background thread). If False, run API as separate process.",
+    )
+
     @field_validator("bot_owner_ids", mode="before")
     @classmethod
     def parse_owner_ids(cls, v: str) -> str:
