@@ -32,6 +32,50 @@ class BackupService:
         self.file_service = FileService()
         self.compression_service = CompressionService()
 
+    async def _report_progress(self, on_progress: Callable[[str], Awaitable[None]] | None, message: str) -> None:
+        """Report progress if callback is provided."""
+        if on_progress:
+            await on_progress(message)
+
+    @staticmethod
+    def _parse_size(size_str: str) -> float:
+        """Parse size string like '12.3MB' to bytes."""
+        try:
+            if size_str.endswith("MB"):
+                return float(size_str[:-2]) * 1024 * 1024
+            if size_str.endswith("KB"):
+                return float(size_str[:-2]) * 1024
+            if size_str.endswith("GB"):
+                return float(size_str[:-2]) * 1024 * 1024 * 1024
+            if size_str.endswith("B"):
+                return float(size_str[:-1])
+        except Exception:
+            pass
+        return 0.0
+
+    def _calculate_stats(self, dump_stats: dict[str, str | int | float]) -> dict[str, str | int | float]:
+        """Calculate backup statistics from dump stats."""
+        original_size_str = str(dump_stats.get("original_size", "N/A"))
+        compressed_size_str = str(dump_stats.get("compressed_size", "N/A"))
+        original_size_bytes = self._parse_size(original_size_str)
+        compressed_size_bytes = self._parse_size(compressed_size_str)
+
+        compression_ratio = "N/A"
+        if original_size_bytes > 0 and compressed_size_bytes > 0:
+            compression_ratio = f"{(1 - compressed_size_bytes / original_size_bytes) * 100:.1f}%"
+
+        compression_method = dump_stats.get("compression_method", None)
+        compression_method_str = str(compression_method).upper() if compression_method else "N/A"
+
+        return {
+            "collections": str(dump_stats.get("collections", "N/A")),
+            "documents": "N/A",  # Not counted in mongodump
+            "original_size": original_size_str,
+            "compressed_size": compressed_size_str,
+            "compression_ratio": compression_ratio,
+            "compression_method": compression_method_str,
+        }
+
     async def _execute_backup_core(
         self, on_progress: Callable[[str], Awaitable[None]] | None = None
     ) -> tuple[str, dict[str, str | int | float]]:
@@ -45,91 +89,42 @@ class BackupService:
             Tuple of (download_url, stats_dict).
         """
         try:
-            if on_progress:
-                await on_progress("🔄 Starting backup process...")
+            await self._report_progress(on_progress, "🔄 Starting backup process...")
             logger.info("Starting backup process")
 
-            if on_progress:
-                await on_progress("🔄 Connecting to MongoDB Atlas...")
+            await self._report_progress(on_progress, "🔄 Connecting to MongoDB Atlas...")
             await self.mongo_service.connect()  # type: ignore[attr-defined]
-            if on_progress:
-                await on_progress("✅ Connected to MongoDB Atlas")
+            await self._report_progress(on_progress, "✅ Connected to MongoDB Atlas")
             logger.info("Connected to MongoDB Atlas")
 
-            # Dump database
-            if on_progress:
-                await on_progress("🔄 Dumping MongoDB database...")
+            await self._report_progress(on_progress, "🔄 Dumping MongoDB database...")
             logger.info("Dumping MongoDB database")
             backup_dir = "backups"
             dump_stats = await self.mongo_service.dump_database(backup_dir)
-            if on_progress:
-                await on_progress(
-                    f"✅ Database dumped ({dump_stats['original_size']} uncompressed, {dump_stats['compressed_size']} compressed)"
-                )
+            await self._report_progress(
+                on_progress,
+                f"✅ Database dumped ({dump_stats['original_size']} uncompressed, {dump_stats['compressed_size']} compressed)",
+            )
             logger.info(
                 "Database dumped",
                 original_size=dump_stats.get("original_size"),
                 compressed_size=dump_stats.get("compressed_size"),
             )
 
-            # Upload to S3
-            if on_progress:
-                await on_progress("🔄 Uploading to AWS S3...")
+            await self._report_progress(on_progress, "🔄 Uploading to AWS S3...")
             logger.info("Uploading to AWS S3")
             archive_path_str = cast(str, dump_stats["archive_path"])
             download_url = await self.s3_service.upload_file(Path(archive_path_str))
-            if on_progress:
-                await on_progress("✅ Uploaded to S3")
+            await self._report_progress(on_progress, "✅ Uploaded to S3")
             logger.info("Uploaded to S3", url=download_url)
 
-            # Cleanup local files
-            if on_progress:
-                await on_progress("🔄 Cleaning up local files...")
+            await self._report_progress(on_progress, "🔄 Cleaning up local files...")
             logger.info("Cleaning up local files")
             await self.file_service.delete_file(archive_path_str)
-            if on_progress:
-                await on_progress("✅ Local files cleaned up")
+            await self._report_progress(on_progress, "✅ Local files cleaned up")
             logger.info("Local files cleaned up")
 
-            # Calculate stats
-            def parse_size(size_str: str) -> float:
-                # Parse size like "12.3MB" to bytes
-                try:
-                    if size_str.endswith("MB"):
-                        return float(size_str[:-2]) * 1024 * 1024
-                    elif size_str.endswith("KB"):
-                        return float(size_str[:-2]) * 1024
-                    elif size_str.endswith("GB"):
-                        return float(size_str[:-2]) * 1024 * 1024 * 1024
-                    elif size_str.endswith("B"):
-                        return float(size_str[:-1])
-                except Exception:
-                    return 0.0
-                return 0.0
-
-            original_size_str = str(dump_stats.get("original_size", "N/A"))
-            compressed_size_str = str(dump_stats.get("compressed_size", "N/A"))
-            original_size_bytes = parse_size(original_size_str)
-            compressed_size_bytes = parse_size(compressed_size_str)
-            compression_ratio = (
-                f"{(1 - compressed_size_bytes / original_size_bytes) * 100:.1f}%"
-                if original_size_bytes > 0 and compressed_size_bytes > 0
-                else "N/A"
-            )
-            compression_method = dump_stats.get("compression_method", None)
-            if compression_method:
-                compression_method = str(compression_method).upper()
-            else:
-                compression_method = "N/A"
-            stats: dict[str, str | int | float] = {
-                "collections": str(dump_stats.get("collections", "N/A")),
-                "documents": "N/A",  # Not counted in mongodump
-                "original_size": original_size_str,
-                "compressed_size": compressed_size_str,
-                "compression_ratio": compression_ratio,
-                "compression_method": compression_method,
-            }
-
+            stats = self._calculate_stats(dump_stats)
             logger.info(
                 "Backup completed successfully",
                 collections=cast(str, stats["collections"]),
