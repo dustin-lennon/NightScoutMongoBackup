@@ -12,7 +12,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from nightscout_backup_bot.services.mongo_service import MongoService
+from nightscout_backup_bot.services.mongo_service import (
+    CONNECTION_TIMEOUT_MS,
+    MAX_RETRY_ATTEMPTS,
+    RETRY_BASE_DELAY,
+    SERVER_SELECTION_TIMEOUT_MS,
+    MongoService,
+)
 
 
 # Fixtures
@@ -33,15 +39,119 @@ async def test_connect_success(mongo_service: MongoService, mock_mongo_client: A
         mock_mongo_client.admin.command.assert_called_once_with("ping")  # type: ignore[attr-defined, misc]
 
 
+def test_connection_constants() -> None:
+    """Test that connection timeout constants are set correctly."""
+    assert CONNECTION_TIMEOUT_MS == 30000
+    assert SERVER_SELECTION_TIMEOUT_MS == 30000
+    assert MAX_RETRY_ATTEMPTS == 3
+    assert RETRY_BASE_DELAY == 2
+
+
 @pytest.mark.asyncio
-async def test_connect_failure(mongo_service: MongoService) -> None:
-    """Test MongoDB connection failure."""
-    with patch(
-        "nightscout_backup_bot.services.mongo_service.AsyncIOMotorClient",
-        side_effect=Exception("Connection failed"),
-    ):
-        with pytest.raises(Exception, match="Connection failed"):
+async def test_connect_failure_all_retries_exhausted(mongo_service: MongoService) -> None:
+    """Test MongoDB connection failure after all retries are exhausted."""
+    with patch("asyncio.sleep", new_callable=AsyncMock):  # Mock sleep to avoid delays
+        with patch(
+            "nightscout_backup_bot.services.mongo_service.AsyncIOMotorClient",
+            side_effect=Exception("Connection failed"),
+        ):
+            with pytest.raises(ConnectionError, match="Failed to connect to MongoDB Atlas after"):
+                await mongo_service.connect()
+
+
+@pytest.mark.asyncio
+async def test_connect_failure_dns_error(mongo_service: MongoService) -> None:
+    """Test MongoDB connection failure with DNS error detection."""
+    dns_error = Exception("The resolution lifetime expired after 5.402 seconds: Server Do53")
+    with patch("asyncio.sleep", new_callable=AsyncMock):  # Mock sleep to avoid delays
+        with patch(
+            "nightscout_backup_bot.services.mongo_service.AsyncIOMotorClient",
+            side_effect=dns_error,
+        ):
+            with pytest.raises(ConnectionError, match="DNS resolution failed"):
+                await mongo_service.connect()
+
+
+@pytest.mark.asyncio
+async def test_connect_success_after_retries(mongo_service: MongoService, mock_mongo_client: AsyncMock) -> None:
+    """Test successful MongoDB connection after initial failures."""
+    # First two attempts fail during client initialization, third succeeds
+    call_count = 0
+
+    def client_factory(*args: object, **kwargs: object) -> AsyncMock | Exception:
+        nonlocal call_count
+        call_count += 1
+        if call_count <= 2:
+            raise Exception("Temporary connection error")
+        return mock_mongo_client
+
+    with patch("asyncio.sleep", new_callable=AsyncMock):  # Mock sleep to avoid delays
+        with patch("nightscout_backup_bot.services.mongo_service.AsyncIOMotorClient", side_effect=client_factory):
             await mongo_service.connect()
+            assert mongo_service.client is not None
+            assert mongo_service.db is not None
+            mock_mongo_client.admin.command.assert_called_once_with("ping")  # type: ignore[attr-defined, misc]
+
+
+@pytest.mark.asyncio
+async def test_connect_retry_with_exponential_backoff(mongo_service: MongoService) -> None:
+    """Test that retries use exponential backoff delays."""
+    sleep_calls: list[float] = []
+
+    async def mock_sleep(delay: float) -> None:
+        sleep_calls.append(delay)
+
+    with patch("asyncio.sleep", side_effect=mock_sleep):
+        with patch(
+            "nightscout_backup_bot.services.mongo_service.AsyncIOMotorClient",
+            side_effect=Exception("Connection failed"),
+        ):
+            with pytest.raises(ConnectionError):
+                await mongo_service.connect()
+
+    # Should have slept 2 times (between attempts 1-2 and 2-3)
+    # First delay: 2 * (2^0) = 2 seconds
+    # Second delay: 2 * (2^1) = 4 seconds
+    assert len(sleep_calls) == 2
+    assert sleep_calls[0] == 2.0  # First retry delay (attempt 1 -> 2)
+    assert sleep_calls[1] == 4.0  # Second retry delay (attempt 2 -> 3)
+
+
+def test_is_dns_error(mongo_service: MongoService) -> None:
+    """Test DNS error detection."""
+    # Test various DNS error messages
+    assert mongo_service._is_dns_error("The resolution lifetime expired after 5.402 seconds")
+    assert mongo_service._is_dns_error("DNS operation timed out")
+    assert mongo_service._is_dns_error("[Errno 65] No route to host")
+    assert mongo_service._is_dns_error("Name resolution failed")
+    assert mongo_service._is_dns_error("getaddrinfo failed")
+
+    # Test case insensitivity
+    assert mongo_service._is_dns_error("DNS OPERATION TIMED OUT")
+    assert mongo_service._is_dns_error("dns operation timed out")
+
+    # Test non-DNS errors
+    assert not mongo_service._is_dns_error("Authentication failed")
+    assert not mongo_service._is_dns_error("Connection timeout")
+    assert not mongo_service._is_dns_error("Invalid credentials")
+
+
+def test_format_connection_error(mongo_service: MongoService) -> None:
+    """Test connection error formatting."""
+    # Test DNS error formatting
+    dns_error = Exception("The resolution lifetime expired")
+    error_msg = mongo_service._format_connection_error(dns_error, attempt=1, max_attempts=3)
+    assert "DNS resolution failed" in error_msg
+    assert "attempt 1/3" in error_msg
+    assert "Suggestions:" in error_msg
+    assert "Check your network connection" in error_msg
+
+    # Test non-DNS error formatting
+    regular_error = Exception("Authentication failed")
+    error_msg = mongo_service._format_connection_error(regular_error, attempt=2, max_attempts=3)
+    assert "Failed to connect to MongoDB" in error_msg
+    assert "attempt 2/3" in error_msg
+    assert "Authentication failed" in error_msg
 
 
 @pytest.mark.asyncio
