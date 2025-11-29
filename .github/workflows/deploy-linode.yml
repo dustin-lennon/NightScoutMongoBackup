@@ -31,7 +31,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup SSH
         run: |
@@ -79,8 +79,27 @@ jobs:
 
             # Check status
             echo "✅ Checking application status..."
-            pm2 status nightscout-backup-bot
-            pm2 logs nightscout-backup-bot --lines 20 --nostream
+            pm2 status
+            
+            # Check bot status
+            pm2 describe nightscout-backup-bot || echo "⚠️  Bot process not found"
+            pm2 logs nightscout-backup-bot --lines 20 --nostream || true
+            
+            # Check API status (if running as separate process)
+            if pm2 describe nightscout-backup-api &>/dev/null; then
+              echo "✅ API running as separate process"
+              pm2 logs nightscout-backup-api --lines 10 --nostream || true
+            else
+              echo "ℹ️  API running in bot process (ENABLE_API_IN_BOT=true)"
+            fi
+            
+            # Test API health endpoint
+            echo "🏥 Testing API health endpoint..."
+            if curl -f -s http://localhost:8000/health > /dev/null; then
+              echo "✅ API health check passed"
+            else
+              echo "⚠️  API health check failed (may still be starting)"
+            fi
 
             echo "✅ Deployment complete!"
           EOF
@@ -99,7 +118,26 @@ jobs:
             cd "${DEPLOY_PATH}"
 
             # Check if bot is online
-            pm2 describe nightscout-backup-bot | grep "status" || exit 1
+            if ! pm2 describe nightscout-backup-bot | grep -q "status"; then
+              echo "❌ Bot process not running"
+              exit 1
+            fi
+            echo "✅ Bot is running"
+
+            # Check API (either as separate process or in bot)
+            if pm2 describe nightscout-backup-api &>/dev/null; then
+              echo "✅ API is running as separate process"
+            else
+              echo "ℹ️  API should be running in bot process"
+            fi
+            
+            # Test API endpoint
+            if curl -f -s http://localhost:8000/health > /dev/null; then
+              echo "✅ API is responding"
+            else
+              echo "⚠️  API health check failed"
+              exit 1
+            fi
 
             echo "✅ Application is running"
           EOF

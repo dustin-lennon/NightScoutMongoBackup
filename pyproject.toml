@@ -20,6 +20,8 @@ aiofiles = "^24.0"
 brotli = "^1.1"
 disnake = "^2.11.0"
 pre-commit = "^4.4.0"
+fastapi = "^0.115"
+uvicorn = {extras = ["standard"], version = "^0.32"}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0"
@@ -31,9 +33,11 @@ black = "^24.0"
 mypy = "^1.11"
 boto3-stubs = {extras = ["s3"], version = "^1.35"}
 pre-commit = "^4.4.0"
+httpx = "^0.27"
 
 [tool.poetry.scripts]
 nightscout-backup-bot = "nightscout_backup_bot.main:main"
+nightscout-backup-api = "nightscout_backup_bot.api.main:main"
 
 [build-system]
 requires = ["poetry-core"]
@@ -93,6 +97,8 @@ module = [
     "brotli.*",
     "dotenv_vault.*",
     "disnake.*",
+    "fastapi.*",
+    "uvicorn.*",
 ]
 ignore_missing_imports = true
 ignore_errors = true

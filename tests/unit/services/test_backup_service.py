@@ -1,3 +1,4 @@
+from typing import cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -41,8 +42,10 @@ async def test_execute_backup_success() -> None:
         result = await backup_service.execute_backup(mock_channel)
         assert result["success"] is True
         assert "url" in result
-        assert result["stats"]["collections"] == "5"
-        assert result["stats"]["compression_method"] == "GZIP"
+        # Type ignore needed because result["stats"] is typed as object in the return type
+        stats = cast(dict[str, str | int | float], result["stats"])  # type: ignore[arg-type]
+        assert stats["collections"] == "5"
+        assert stats["compression_method"] == "GZIP"
 
 
 @pytest.mark.asyncio
@@ -66,5 +69,5 @@ async def test_execute_backup_failure() -> None:
         backup_service.mongo_service.disconnect.return_value = None
 
         with pytest.raises(Exception):  # noqa: B017
-            await backup_service.execute_backup(mock_channel)
+            _ = await backup_service.execute_backup(mock_channel)
         mock_thread_service.send_error.assert_called()
