@@ -1,5 +1,6 @@
 """Backup service that orchestrates the full backup workflow."""
 
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
@@ -31,6 +32,110 @@ class BackupService:
         self.file_service = FileService()
         self.compression_service = CompressionService()
 
+    async def _report_progress(self, on_progress: Callable[[str], Awaitable[None]] | None, message: str) -> None:
+        """Report progress if callback is provided."""
+        if on_progress:
+            await on_progress(message)
+
+    @staticmethod
+    def _parse_size(size_str: str) -> float:
+        """Parse size string like '12.3MB' to bytes."""
+        try:
+            if size_str.endswith("MB"):
+                return float(size_str[:-2]) * 1024 * 1024
+            if size_str.endswith("KB"):
+                return float(size_str[:-2]) * 1024
+            if size_str.endswith("GB"):
+                return float(size_str[:-2]) * 1024 * 1024 * 1024
+            if size_str.endswith("B"):
+                return float(size_str[:-1])
+        except Exception:
+            pass
+        return 0.0
+
+    def _calculate_stats(self, dump_stats: dict[str, str | int | float]) -> dict[str, str | int | float]:
+        """Calculate backup statistics from dump stats."""
+        original_size_str = str(dump_stats.get("original_size", "N/A"))
+        compressed_size_str = str(dump_stats.get("compressed_size", "N/A"))
+        original_size_bytes = self._parse_size(original_size_str)
+        compressed_size_bytes = self._parse_size(compressed_size_str)
+
+        compression_ratio = "N/A"
+        if original_size_bytes > 0 and compressed_size_bytes > 0:
+            compression_ratio = f"{(1 - compressed_size_bytes / original_size_bytes) * 100:.1f}%"
+
+        compression_method = dump_stats.get("compression_method", None)
+        compression_method_str = str(compression_method).upper() if compression_method else "N/A"
+
+        return {
+            "collections": str(dump_stats.get("collections", "N/A")),
+            "documents": "N/A",  # Not counted in mongodump
+            "original_size": original_size_str,
+            "compressed_size": compressed_size_str,
+            "compression_ratio": compression_ratio,
+            "compression_method": compression_method_str,
+        }
+
+    async def _execute_backup_core(
+        self, on_progress: Callable[[str], Awaitable[None]] | None = None
+    ) -> tuple[str, dict[str, str | int | float]]:
+        """
+        Core backup workflow with optional progress callbacks.
+
+        Args:
+            on_progress: Optional async callback function that receives progress messages.
+
+        Returns:
+            Tuple of (download_url, stats_dict).
+        """
+        try:
+            await self._report_progress(on_progress, "🔄 Starting backup process...")
+            logger.info("Starting backup process")
+
+            await self._report_progress(on_progress, "🔄 Connecting to MongoDB Atlas...")
+            await self.mongo_service.connect()  # type: ignore[attr-defined]
+            await self._report_progress(on_progress, "✅ Connected to MongoDB Atlas")
+            logger.info("Connected to MongoDB Atlas")
+
+            await self._report_progress(on_progress, "🔄 Dumping MongoDB database...")
+            logger.info("Dumping MongoDB database")
+            backup_dir = "backups"
+            dump_stats = await self.mongo_service.dump_database(backup_dir)
+            await self._report_progress(
+                on_progress,
+                f"✅ Database dumped ({dump_stats['original_size']} uncompressed, {dump_stats['compressed_size']} compressed)",
+            )
+            logger.info(
+                "Database dumped",
+                original_size=dump_stats.get("original_size"),
+                compressed_size=dump_stats.get("compressed_size"),
+            )
+
+            await self._report_progress(on_progress, "🔄 Uploading to AWS S3...")
+            logger.info("Uploading to AWS S3")
+            archive_path_str = cast(str, dump_stats["archive_path"])
+            download_url = await self.s3_service.upload_file(Path(archive_path_str))
+            await self._report_progress(on_progress, "✅ Uploaded to S3")
+            logger.info("Uploaded to S3", url=download_url)
+
+            await self._report_progress(on_progress, "🔄 Cleaning up local files...")
+            logger.info("Cleaning up local files")
+            await self.file_service.delete_file(archive_path_str)
+            await self._report_progress(on_progress, "✅ Local files cleaned up")
+            logger.info("Local files cleaned up")
+
+            stats = self._calculate_stats(dump_stats)
+            logger.info(
+                "Backup completed successfully",
+                collections=cast(str, stats["collections"]),
+                url=download_url,
+            )
+
+            return download_url, stats
+
+        finally:
+            self.mongo_service.disconnect()  # type: ignore[attr-defined]
+
     async def execute_backup(
         self,
         channel: disnake.TextChannel,
@@ -51,77 +156,12 @@ class BackupService:
         thread = await thread_service.create_backup_thread(timestamp)
 
         try:
-            _ = await thread_service.send_progress(thread, "🔄 Starting backup process...")
-            _ = await thread_service.send_progress(thread, "🔄 Connecting to MongoDB Atlas...")
-            await self.mongo_service.connect()  # type: ignore[attr-defined]
-            _ = await thread_service.send_progress(thread, "✅ Connected to MongoDB Atlas")
+            # Create progress callback that sends messages to Discord thread
+            async def on_progress(message: str) -> None:
+                _ = await thread_service.send_progress(thread, message)
 
-            # Step 2: Dump database
-            _ = await thread_service.send_progress(thread, "🔄 Dumping MongoDB database...")
-            backup_dir = "backups"
-            dump_stats = await self.mongo_service.dump_database(backup_dir)
-
-            _ = await thread_service.send_progress(
-                thread,
-                f"✅ Database dumped ({dump_stats['original_size']} uncompressed, {dump_stats['compressed_size']} compressed)",
-            )
-
-            # Step 3: Upload to S3
-            _ = await thread_service.send_progress(thread, "🔄 Uploading to AWS S3...")
-            archive_path_str = cast(str, dump_stats["archive_path"])
-            download_url = await self.s3_service.upload_file(Path(archive_path_str))
-            _ = await thread_service.send_progress(thread, "✅ Uploaded to S3")
-
-            # Step 4: Cleanup local files
-            _ = await thread_service.send_progress(thread, "🔄 Cleaning up local files...")
-            await self.file_service.delete_file(archive_path_str)
-            _ = await thread_service.send_progress(thread, "✅ Local files cleaned up")
-
-            # Step 5: Send completion message
-            def parse_size(size_str: str) -> float:
-                # Parse size like "12.3MB" to bytes
-                try:
-                    if size_str.endswith("MB"):
-                        return float(size_str[:-2]) * 1024 * 1024
-                    elif size_str.endswith("KB"):
-                        return float(size_str[:-2]) * 1024
-                    elif size_str.endswith("GB"):
-                        return float(size_str[:-2]) * 1024 * 1024 * 1024
-                    elif size_str.endswith("B"):
-                        return float(size_str[:-1])
-                except Exception:
-                    return 0.0
-                return 0.0
-
-            original_size_str = str(dump_stats.get("original_size", "N/A"))
-            compressed_size_str = str(dump_stats.get("compressed_size", "N/A"))
-            original_size_bytes = parse_size(original_size_str)
-            compressed_size_bytes = parse_size(compressed_size_str)
-            compression_ratio = (
-                f"{(1 - compressed_size_bytes / original_size_bytes) * 100:.1f}%"
-                if original_size_bytes > 0 and compressed_size_bytes > 0
-                else "N/A"
-            )
-            compression_method = dump_stats.get("compression_method", None)
-            if compression_method:
-                compression_method = str(compression_method).upper()
-            else:
-                compression_method = "N/A"
-            stats: dict[str, str | int | float] = {
-                "collections": str(dump_stats.get("collections", "N/A")),
-                "documents": "N/A",  # Not counted in mongodump
-                "original_size": original_size_str,
-                "compressed_size": compressed_size_str,
-                "compression_ratio": compression_ratio,
-                "compression_method": compression_method,
-            }
+            download_url, stats = await self._execute_backup_core(on_progress=on_progress)
             _ = await thread_service.send_completion(thread, download_url, cast(dict[str, object], stats))
-
-            logger.info(
-                "Backup completed successfully",
-                collections=cast(str, stats["collections"]),
-                url=download_url,
-            )
 
             return {
                 "success": True,
@@ -136,8 +176,24 @@ class BackupService:
             _ = await thread_service.send_error(thread, error_msg)
             raise
 
-        finally:
-            self.mongo_service.disconnect()  # type: ignore[attr-defined]
+    async def execute_backup_api(self) -> dict[str, object]:
+        """
+        Execute full backup workflow without Discord (for API usage).
+
+        Returns:
+            Dictionary with backup results and statistics.
+        """
+        try:
+            download_url, stats = await self._execute_backup_core()
+            return {
+                "success": True,
+                "url": download_url,
+                "stats": stats,
+            }
+        except Exception as e:
+            error_msg = str(e)
+            logger.error("Backup failed", error=error_msg)
+            raise
 
     async def test_connections(self) -> dict[str, bool]:
         """
