@@ -19,12 +19,15 @@ class TestRunAPIServer:
 
         with (
             patch("nightscout_backup_bot.main.logger") as mock_logger,
+            patch("nightscout_backup_bot.main.setup_logging"),
             patch("nightscout_backup_bot.api.server.app", mock_app),
             patch("nightscout_backup_bot.main.uvicorn.Config", return_value=mock_config) as mock_config_class,
             patch("nightscout_backup_bot.main.uvicorn.Server", return_value=mock_server) as mock_server_class,
             patch("nightscout_backup_bot.main.asyncio.new_event_loop") as mock_new_loop,
             patch("nightscout_backup_bot.main.asyncio.set_event_loop") as mock_set_loop,
+            patch("nightscout_backup_bot.main.settings") as mock_settings,
         ):
+            mock_settings.sentry_dsn = None
             # Mock event loop to avoid blocking
             mock_loop = MagicMock()
             mock_new_loop.return_value = mock_loop
@@ -35,7 +38,7 @@ class TestRunAPIServer:
             _run_api_server()
 
             # Verify logger was called
-            mock_logger.info.assert_called_once()
+            assert mock_logger.info.call_count >= 1
             # Verify Config was created with correct parameters
             mock_config_class.assert_called_once_with(mock_app, host="0.0.0.0", port=8000, log_level="info")
             # Verify Server was created with config
@@ -43,6 +46,124 @@ class TestRunAPIServer:
             # Verify event loop was set up and server.serve was called
             mock_new_loop.assert_called_once()
             mock_set_loop.assert_called_once()
+            mock_loop.run_until_complete.assert_called_once()
+
+    def test_run_api_server_with_sentry_enabled(self) -> None:
+        """Test API server initializes Sentry when DSN is configured."""
+        mock_app = MagicMock()
+        mock_config = MagicMock()
+        mock_server = MagicMock()
+        mock_sentry_sdk = MagicMock()
+        mock_fastapi_integration = MagicMock()
+        mock_uvicorn_integration = MagicMock()
+
+        with (
+            patch("nightscout_backup_bot.main.logger") as mock_logger,
+            patch("nightscout_backup_bot.main.setup_logging"),
+            patch("nightscout_backup_bot.api.server.app", mock_app),
+            patch("nightscout_backup_bot.main.uvicorn.Config", return_value=mock_config),
+            patch("nightscout_backup_bot.main.uvicorn.Server", return_value=mock_server),
+            patch("nightscout_backup_bot.main.asyncio.new_event_loop") as mock_new_loop,
+            patch("nightscout_backup_bot.main.asyncio.set_event_loop"),
+            patch("nightscout_backup_bot.main.settings") as mock_settings,
+            patch.dict(
+                "sys.modules",
+                {
+                    "sentry_sdk": mock_sentry_sdk,
+                    "sentry_sdk.integrations.fastapi": MagicMock(FastApiIntegration=mock_fastapi_integration),
+                    "sentry_sdk.integrations.uvicorn": MagicMock(UvicornIntegration=mock_uvicorn_integration),
+                },
+            ),
+        ):
+            mock_settings.sentry_dsn = "https://test@sentry.io/123"
+            mock_settings.node_env = "development"
+            mock_settings.is_production = False
+
+            # Mock event loop to avoid blocking
+            mock_loop = MagicMock()
+            mock_new_loop.return_value = mock_loop
+            mock_loop.run_until_complete = MagicMock()
+
+            _run_api_server()
+
+            # Verify Sentry was initialized
+            mock_sentry_sdk.init.assert_called_once()
+            init_call = mock_sentry_sdk.init.call_args
+            assert init_call[1]["dsn"] == "https://test@sentry.io/123"
+            assert init_call[1]["environment"] == "development"
+            assert init_call[1]["traces_sample_rate"] == 1.0
+
+            # Verify Sentry initialized message was logged
+            sentry_calls = [call for call in mock_logger.info.call_args_list if "Sentry initialized" in str(call)]
+            assert len(sentry_calls) > 0
+
+    def test_run_api_server_with_sentry_disabled(self) -> None:
+        """Test API server skips Sentry when DSN is None."""
+        mock_app = MagicMock()
+        mock_config = MagicMock()
+        mock_server = MagicMock()
+        mock_sentry_sdk = MagicMock()
+
+        with (
+            patch("nightscout_backup_bot.main.logger"),
+            patch("nightscout_backup_bot.main.setup_logging"),
+            patch("nightscout_backup_bot.api.server.app", mock_app),
+            patch("nightscout_backup_bot.main.uvicorn.Config", return_value=mock_config),
+            patch("nightscout_backup_bot.main.uvicorn.Server", return_value=mock_server),
+            patch("nightscout_backup_bot.main.asyncio.new_event_loop") as mock_new_loop,
+            patch("nightscout_backup_bot.main.asyncio.set_event_loop"),
+            patch("nightscout_backup_bot.main.settings") as mock_settings,
+            patch.dict("sys.modules", {"sentry_sdk": mock_sentry_sdk}),
+        ):
+            mock_settings.sentry_dsn = None
+            mock_settings.node_env = "development"
+
+            # Mock event loop to avoid blocking
+            mock_loop = MagicMock()
+            mock_new_loop.return_value = mock_loop
+            mock_loop.run_until_complete = MagicMock()
+
+            _run_api_server()
+
+            # Verify Sentry was not initialized
+            mock_sentry_sdk.init.assert_not_called()
+
+    def test_run_api_server_with_sentry_initialization_error(self) -> None:
+        """Test API server handles Sentry initialization errors gracefully."""
+        mock_app = MagicMock()
+        mock_config = MagicMock()
+        mock_server = MagicMock()
+        mock_sentry_sdk = MagicMock()
+        mock_sentry_sdk.init.side_effect = Exception("Sentry init failed")
+
+        with (
+            patch("nightscout_backup_bot.main.logger") as mock_logger,
+            patch("nightscout_backup_bot.main.setup_logging"),
+            patch("nightscout_backup_bot.api.server.app", mock_app),
+            patch("nightscout_backup_bot.main.uvicorn.Config", return_value=mock_config),
+            patch("nightscout_backup_bot.main.uvicorn.Server", return_value=mock_server),
+            patch("nightscout_backup_bot.main.asyncio.new_event_loop") as mock_new_loop,
+            patch("nightscout_backup_bot.main.asyncio.set_event_loop"),
+            patch("nightscout_backup_bot.main.settings") as mock_settings,
+            patch.dict("sys.modules", {"sentry_sdk": mock_sentry_sdk}),
+        ):
+            mock_settings.sentry_dsn = "https://test@sentry.io/123"
+            mock_settings.node_env = "development"
+
+            # Mock event loop to avoid blocking
+            mock_loop = MagicMock()
+            mock_new_loop.return_value = mock_loop
+            mock_loop.run_until_complete = MagicMock()
+
+            _run_api_server()
+
+            # Verify warning was logged
+            warning_calls = [
+                call for call in mock_logger.warning.call_args_list if "Failed to initialize Sentry" in str(call)
+            ]
+            assert len(warning_calls) > 0
+
+            # Verify server still started despite Sentry error
             mock_loop.run_until_complete.assert_called_once()
 
     def test_run_api_server_import_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
