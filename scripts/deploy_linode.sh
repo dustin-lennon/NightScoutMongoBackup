@@ -113,18 +113,43 @@ fi
 
     # Start with PM2
     echo ""
-    echo "Starting bot with PM2..."
-    pm2 delete nightscout-backup-bot 2>/dev/null || true
-    pm2 start "$REPO_PATH/ecosystem.prod.config.js"
+    echo "Starting application with PM2..."
+    
+    # Check if API should run in bot process
+    if grep -q "ENABLE_API_IN_BOT=true" "$REPO_PATH/.env" 2>/dev/null; then
+      echo "ℹ️  ENABLE_API_IN_BOT=true - API will run in bot process"
+      pm2 delete nightscout-backup-bot 2>/dev/null || true
+      pm2 start "$REPO_PATH/ecosystem.prod.config.js" --only nightscout-backup-bot
+    else
+      echo "ℹ️  Running bot and API as separate processes"
+      pm2 delete nightscout-backup-bot nightscout-backup-api 2>/dev/null || true
+      pm2 start "$REPO_PATH/ecosystem.prod.config.js"
+    fi
 
     echo ""
-    echo -e "${GREEN}✅ Bot started with PM2${NC}"
+    echo -e "${GREEN}✅ Application started with PM2${NC}"
+    echo ""
+    
+    # Wait a moment for services to start
+    sleep 3
+    
+    # Test API health
+    echo "Testing API health endpoint..."
+    if curl -f -s http://localhost:8000/health > /dev/null 2>&1; then
+      echo -e "${GREEN}✅ API is responding${NC}"
+    else
+      echo -e "${YELLOW}⚠️  API health check failed (may still be starting)${NC}"
+    fi
+    
     echo ""
     echo "Useful commands:"
     echo "  pm2 status                        - Check status"
     echo "  pm2 logs                          - View logs"
-    echo "  pm2 restart nightscout-backup-bot - Restart"
-    echo "  pm2 stop nightscout-backup-bot    - Stop"
+    echo "  pm2 logs nightscout-backup-bot    - Bot logs only"
+    echo "  pm2 logs nightscout-backup-api    - API logs only (if separate)"
+    echo "  pm2 restart nightscout-backup-bot - Restart bot"
+    echo "  pm2 restart nightscout-backup-api - Restart API (if separate)"
+    echo "  pm2 restart ecosystem.prod.config.js - Restart all"
     echo ""
     echo "To enable auto-start on boot:"
     echo "  pm2 startup systemd -u $USER --hp $HOME"
