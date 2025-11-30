@@ -20,10 +20,12 @@ jobs:
           (startsWith(github.event.pull_request.head.ref, 'feature/') ||
            startsWith(github.event.pull_request.head.ref, 'hotfix/') ||
            startsWith(github.event.pull_request.head.ref, 'bugfix/'))
+        env:
+          BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
+          GITHUB_REPO: ${{ github.repository }}
         run: |
-          BRANCH_NAME=${{ github.event.pull_request.head.ref }}
-          echo "🚀 Attempting to delete branch: $BRANCH_NAME"
+          echo "🚀 Attempting to delete branch: \"$BRANCH_NAME\""
 
           curl -X DELETE -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
                -H "Accept: application/vnd.github+json" \
-               "https://api.github.com/repos/${{ github.repository }}/git/refs/heads/$BRANCH_NAME"
+               "https://api.github.com/repos/$GITHUB_REPO/git/refs/heads/$BRANCH_NAME"

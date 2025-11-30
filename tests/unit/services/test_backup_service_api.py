@@ -1,7 +1,7 @@
 """Tests for backup service API methods."""
 
 from typing import cast
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -16,6 +16,8 @@ async def test_execute_backup_api_success() -> None:
     backup_service.s3_service = AsyncMock()
     backup_service.file_service = AsyncMock()
     backup_service.compression_service = AsyncMock()
+    # disconnect() is synchronous, not async
+    backup_service.mongo_service.disconnect = MagicMock()
 
     # Mock mongo dump
     backup_service.mongo_service.connect.return_value = None
@@ -28,7 +30,6 @@ async def test_execute_backup_api_success() -> None:
     }
     backup_service.s3_service.upload_file.return_value = "https://s3-url"
     backup_service.file_service.delete_file.return_value = None
-    backup_service.mongo_service.disconnect.return_value = None
 
     result = await backup_service.execute_backup_api()
     assert result["success"] is True
@@ -45,8 +46,9 @@ async def test_execute_backup_api_failure() -> None:
     """Test execute_backup_api with failure."""
     backup_service = BackupService()
     backup_service.mongo_service = AsyncMock()
+    # disconnect() is synchronous, not async
+    backup_service.mongo_service.disconnect = MagicMock()
     backup_service.mongo_service.connect.side_effect = Exception("Mongo error")
-    backup_service.mongo_service.disconnect.return_value = None
 
     with pytest.raises(Exception, match="Mongo error"):  # noqa: B017
         _ = await backup_service.execute_backup_api()
@@ -59,6 +61,8 @@ async def test_execute_backup_core_without_callback() -> None:
     backup_service.mongo_service = AsyncMock()
     backup_service.s3_service = AsyncMock()
     backup_service.file_service = AsyncMock()
+    # disconnect() is synchronous, not async
+    backup_service.mongo_service.disconnect = MagicMock()
 
     backup_service.mongo_service.connect.return_value = None
     backup_service.mongo_service.dump_database.return_value = {
@@ -70,7 +74,6 @@ async def test_execute_backup_core_without_callback() -> None:
     }
     backup_service.s3_service.upload_file.return_value = "https://s3-test-url"
     backup_service.file_service.delete_file.return_value = None
-    backup_service.mongo_service.disconnect.return_value = None
 
     download_url, stats = await backup_service._execute_backup_core()  # type: ignore[attr-defined]  # noqa: SLF001
 
@@ -88,6 +91,8 @@ async def test_execute_backup_core_with_callback() -> None:
     backup_service.mongo_service = AsyncMock()
     backup_service.s3_service = AsyncMock()
     backup_service.file_service = AsyncMock()
+    # disconnect() is synchronous, not async
+    backup_service.mongo_service.disconnect = MagicMock()
 
     backup_service.mongo_service.connect.return_value = None
     backup_service.mongo_service.dump_database.return_value = {
@@ -99,7 +104,6 @@ async def test_execute_backup_core_with_callback() -> None:
     }
     backup_service.s3_service.upload_file.return_value = "https://s3-callback-url"
     backup_service.file_service.delete_file.return_value = None
-    backup_service.mongo_service.disconnect.return_value = None
 
     progress_messages: list[str] = []
 
@@ -123,9 +127,10 @@ async def test_test_connections_both_success() -> None:
     backup_service = BackupService()
     backup_service.mongo_service = AsyncMock()
     backup_service.s3_service = AsyncMock()
+    # disconnect() is synchronous, not async
+    backup_service.mongo_service.disconnect = MagicMock()
 
     backup_service.mongo_service.connect.return_value = None
-    backup_service.mongo_service.disconnect.return_value = None
     backup_service.s3_service.test_connection.return_value = True
 
     results = await backup_service.test_connections()
@@ -145,7 +150,6 @@ async def test_test_connections_mongodb_fails() -> None:
     backup_service.s3_service = AsyncMock()
 
     backup_service.mongo_service.connect.side_effect = Exception("MongoDB connection error")
-    backup_service.mongo_service.disconnect.return_value = None
     backup_service.s3_service.test_connection.return_value = True
 
     results = await backup_service.test_connections()
@@ -162,9 +166,10 @@ async def test_test_connections_s3_fails() -> None:
     backup_service = BackupService()
     backup_service.mongo_service = AsyncMock()
     backup_service.s3_service = AsyncMock()
+    # disconnect() is synchronous, not async
+    backup_service.mongo_service.disconnect = MagicMock()
 
     backup_service.mongo_service.connect.return_value = None
-    backup_service.mongo_service.disconnect.return_value = None
     backup_service.s3_service.test_connection.side_effect = Exception("S3 connection error")
 
     results = await backup_service.test_connections()
@@ -184,7 +189,6 @@ async def test_test_connections_both_fail() -> None:
     backup_service.s3_service = AsyncMock()
 
     backup_service.mongo_service.connect.side_effect = Exception("MongoDB connection error")
-    backup_service.mongo_service.disconnect.return_value = None
     backup_service.s3_service.test_connection.side_effect = Exception("S3 connection error")
 
     results = await backup_service.test_connections()
@@ -201,9 +205,10 @@ async def test_test_connections_s3_returns_false() -> None:
     backup_service = BackupService()
     backup_service.mongo_service = AsyncMock()
     backup_service.s3_service = AsyncMock()
+    # disconnect() is synchronous, not async
+    backup_service.mongo_service.disconnect = MagicMock()
 
     backup_service.mongo_service.connect.return_value = None
-    backup_service.mongo_service.disconnect.return_value = None
     backup_service.s3_service.test_connection.return_value = False
 
     results = await backup_service.test_connections()

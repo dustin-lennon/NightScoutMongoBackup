@@ -34,8 +34,8 @@ module.exports = {
       merge_logs: true,
       env: {
         NODE_ENV: 'development',
-		watch: ['src/'],
-		ENABLE_API_IN_BOT: 'true',
+        watch: ['src/'],
+        ENABLE_API_IN_BOT: 'true',
         // Add other development environment variables here
       }
     }

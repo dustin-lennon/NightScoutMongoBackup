@@ -63,7 +63,7 @@ async def test_purge_collection_success() -> None:
     interaction = make_interaction()
     with (
         patch.object(cog.mongo_service, "connect", new_callable=AsyncMock),
-        patch.object(cog.mongo_service, "disconnect", new_callable=AsyncMock),
+        patch.object(cog.mongo_service, "disconnect", new_callable=MagicMock),
         patch.object(cog.mongo_service, "simulate_delete_many", new_callable=AsyncMock, return_value=10),
         patch("nightscout_backup_bot.cogs.admin.purge.validate_yyyy_mm_dd", return_value="2022-01-01"),
         patch("disnake.ui.View.wait", AsyncMock()),
@@ -86,7 +86,7 @@ async def test_purge_collection_cancel() -> None:
     interaction = make_interaction()
     with (
         patch.object(cog.mongo_service, "connect", new_callable=AsyncMock),
-        patch.object(cog.mongo_service, "disconnect", new_callable=AsyncMock),
+        patch.object(cog.mongo_service, "disconnect", new_callable=MagicMock),
         patch.object(cog.mongo_service, "simulate_delete_many", new_callable=AsyncMock, return_value=10),
         patch("nightscout_backup_bot.cogs.admin.purge.validate_yyyy_mm_dd", return_value="2022-01-01"),
         patch("disnake.ui.View.wait", AsyncMock()),
@@ -110,7 +110,7 @@ async def test_purge_collection_date_error() -> None:
 
     with (
         patch.object(cog.mongo_service, "connect", new_callable=AsyncMock),
-        patch.object(cog.mongo_service, "disconnect", new_callable=AsyncMock),
+        patch.object(cog.mongo_service, "disconnect", new_callable=MagicMock),
         patch(
             "nightscout_backup_bot.cogs.admin.purge.validate_yyyy_mm_dd", side_effect=DateValidationError("bad date")
         ),
@@ -131,7 +131,7 @@ async def test_purge_collection_mongo_error() -> None:
     interaction = make_interaction()
     with (
         patch.object(cog.mongo_service, "connect", new_callable=AsyncMock, side_effect=Exception("mongo fail")),
-        patch.object(cog.mongo_service, "disconnect", new_callable=AsyncMock),
+        patch.object(cog.mongo_service, "disconnect", new_callable=MagicMock),
         patch("nightscout_backup_bot.cogs.admin.purge.validate_yyyy_mm_dd", return_value="2022-01-01"),
     ):
         cog.mongo_service.db = MagicMock()

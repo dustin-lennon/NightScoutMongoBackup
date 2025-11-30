@@ -13,6 +13,8 @@ async def test_execute_backup_success() -> None:
     backup_service.s3_service = AsyncMock()
     backup_service.file_service = AsyncMock()
     backup_service.compression_service = AsyncMock()
+    # disconnect() is synchronous, not async
+    backup_service.mongo_service.disconnect = MagicMock()
 
     # Mock Discord channel and thread service
     mock_channel = MagicMock()
@@ -37,7 +39,6 @@ async def test_execute_backup_success() -> None:
         }
         backup_service.s3_service.upload_file.return_value = "https://s3-url"
         backup_service.file_service.delete_file.return_value = None
-        backup_service.mongo_service.disconnect.return_value = None
 
         result = await backup_service.execute_backup(mock_channel)
         assert result["success"] is True
@@ -55,6 +56,8 @@ async def test_execute_backup_failure() -> None:
     backup_service.s3_service = AsyncMock()
     backup_service.file_service = AsyncMock()
     backup_service.compression_service = AsyncMock()
+    # disconnect() is synchronous, not async
+    backup_service.mongo_service.disconnect = MagicMock()
 
     mock_channel = MagicMock()
     mock_thread_service = AsyncMock()
@@ -66,7 +69,6 @@ async def test_execute_backup_failure() -> None:
         mock_thread_service.send_error = AsyncMock()
 
         backup_service.mongo_service.connect.side_effect = Exception("Mongo error")
-        backup_service.mongo_service.disconnect.return_value = None
 
         with pytest.raises(Exception):  # noqa: B017
             _ = await backup_service.execute_backup(mock_channel)
