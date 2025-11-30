@@ -192,7 +192,7 @@ class TestQueryDBCog:  # type: ignore[misc]
         mock_collection.count_documents = AsyncMock(return_value=1000)
 
         querydb_cog.mongo_service.connect = AsyncMock()
-        querydb_cog.mongo_service.disconnect = AsyncMock()
+        querydb_cog.mongo_service.disconnect = MagicMock()
         mock_db = MagicMock()
         mock_db.__getitem__ = MagicMock(return_value=mock_collection)
         querydb_cog.mongo_service.db = mock_db
@@ -214,7 +214,7 @@ class TestQueryDBCog:  # type: ignore[misc]
     async def test_handle_entries_db_none(self, querydb_cog: Any, mock_interaction: Any) -> None:
         """Test entries query when db is None."""
         querydb_cog.mongo_service.connect = AsyncMock()
-        querydb_cog.mongo_service.disconnect = AsyncMock()
+        querydb_cog.mongo_service.disconnect = MagicMock()
         querydb_cog.mongo_service.db = None
 
         await querydb_cog._handle_entries(mock_interaction, "2024-01-15")
@@ -236,7 +236,7 @@ class TestQueryDBCog:  # type: ignore[misc]
         mock_cursor.limit = MagicMock(return_value=mock_cursor)
 
         querydb_cog.mongo_service.connect = AsyncMock()
-        querydb_cog.mongo_service.disconnect = AsyncMock()
+        querydb_cog.mongo_service.disconnect = MagicMock()
         mock_db = MagicMock()
         mock_db.__getitem__ = MagicMock(return_value=mock_collection)
         querydb_cog.mongo_service.db = mock_db
@@ -252,7 +252,7 @@ class TestQueryDBCog:  # type: ignore[misc]
     async def test_handle_entries_invalid_date(self, querydb_cog: Any, mock_interaction: Any) -> None:
         """Test entries query with invalid date."""
         querydb_cog.mongo_service.connect = AsyncMock()
-        querydb_cog.mongo_service.disconnect = AsyncMock()
+        querydb_cog.mongo_service.disconnect = MagicMock()
 
         await querydb_cog._handle_entries(mock_interaction, "invalid-date")
 
@@ -265,7 +265,7 @@ class TestQueryDBCog:  # type: ignore[misc]
     async def test_handle_entries_connection_error(self, querydb_cog: Any, mock_interaction: Any) -> None:
         """Test entries query with connection error."""
         querydb_cog.mongo_service.connect = AsyncMock(side_effect=Exception("Connection failed"))
-        querydb_cog.mongo_service.disconnect = AsyncMock()
+        querydb_cog.mongo_service.disconnect = MagicMock()
 
         await querydb_cog._handle_entries(mock_interaction, "2024-01-15")
 
@@ -289,7 +289,7 @@ class TestQueryDBCog:  # type: ignore[misc]
         mock_collection.count_documents = AsyncMock(return_value=500)
 
         querydb_cog.mongo_service.connect = AsyncMock()
-        querydb_cog.mongo_service.disconnect = AsyncMock()
+        querydb_cog.mongo_service.disconnect = MagicMock()
         mock_db = MagicMock()
         mock_db.__getitem__ = MagicMock(return_value=mock_collection)
         querydb_cog.mongo_service.db = mock_db
@@ -309,7 +309,7 @@ class TestQueryDBCog:  # type: ignore[misc]
     async def test_handle_device_status_db_none(self, querydb_cog: Any, mock_interaction: Any) -> None:
         """Test device status query when db is None."""
         querydb_cog.mongo_service.connect = AsyncMock()
-        querydb_cog.mongo_service.disconnect = AsyncMock()
+        querydb_cog.mongo_service.disconnect = MagicMock()
         querydb_cog.mongo_service.db = None
 
         await querydb_cog._handle_device_status(mock_interaction, "2024-01-15")
@@ -332,7 +332,7 @@ class TestQueryDBCog:  # type: ignore[misc]
         mock_collection.count_documents = AsyncMock(return_value=250)
 
         querydb_cog.mongo_service.connect = AsyncMock()
-        querydb_cog.mongo_service.disconnect = AsyncMock()
+        querydb_cog.mongo_service.disconnect = MagicMock()
         mock_db = MagicMock()
         mock_db.__getitem__ = MagicMock(return_value=mock_collection)
         querydb_cog.mongo_service.db = mock_db
@@ -352,7 +352,7 @@ class TestQueryDBCog:  # type: ignore[misc]
     async def test_handle_treatments_db_none(self, querydb_cog: Any, mock_interaction: Any) -> None:
         """Test treatments query when db is None."""
         querydb_cog.mongo_service.connect = AsyncMock()
-        querydb_cog.mongo_service.disconnect = AsyncMock()
+        querydb_cog.mongo_service.disconnect = MagicMock()
         querydb_cog.mongo_service.db = None
 
         await querydb_cog._handle_treatments(mock_interaction, "2024-01-15")
@@ -402,7 +402,7 @@ class TestQueryDBCog:  # type: ignore[misc]
     async def test_handle_device_status_invalid_date(self, querydb_cog: Any, mock_interaction: Any) -> None:
         """Test device status query with invalid date."""
         querydb_cog.mongo_service.connect = AsyncMock()
-        querydb_cog.mongo_service.disconnect = AsyncMock()
+        querydb_cog.mongo_service.disconnect = MagicMock()
 
         await querydb_cog._handle_device_status(mock_interaction, "invalid-date")
 
@@ -414,7 +414,7 @@ class TestQueryDBCog:  # type: ignore[misc]
     async def test_handle_device_status_connection_error(self, querydb_cog: Any, mock_interaction: Any) -> None:
         """Test device status query with connection error."""
         querydb_cog.mongo_service.connect = AsyncMock(side_effect=Exception("Connection failed"))
-        querydb_cog.mongo_service.disconnect = AsyncMock()
+        querydb_cog.mongo_service.disconnect = MagicMock()
 
         await querydb_cog._handle_device_status(mock_interaction, "2024-01-15")
 
@@ -428,7 +428,7 @@ class TestQueryDBCog:  # type: ignore[misc]
         mock_collection = MagicMock()
         mock_collection.find = MagicMock(side_effect=Exception("Query failed"))
         querydb_cog.mongo_service.connect = AsyncMock()
-        querydb_cog.mongo_service.disconnect = AsyncMock()
+        querydb_cog.mongo_service.disconnect = MagicMock()
         mock_db = MagicMock()
         mock_db.__getitem__ = MagicMock(return_value=mock_collection)
         querydb_cog.mongo_service.db = mock_db
@@ -450,7 +450,7 @@ class TestQueryDBCog:  # type: ignore[misc]
         mock_cursor.limit = MagicMock(return_value=mock_cursor)
 
         querydb_cog.mongo_service.connect = AsyncMock()
-        querydb_cog.mongo_service.disconnect = AsyncMock()
+        querydb_cog.mongo_service.disconnect = MagicMock()
         mock_db = MagicMock()
         mock_db.__getitem__ = MagicMock(return_value=mock_collection)
         querydb_cog.mongo_service.db = mock_db
@@ -465,7 +465,7 @@ class TestQueryDBCog:  # type: ignore[misc]
     async def test_handle_treatments_invalid_date(self, querydb_cog: Any, mock_interaction: Any) -> None:
         """Test treatments query with invalid date."""
         querydb_cog.mongo_service.connect = AsyncMock()
-        querydb_cog.mongo_service.disconnect = AsyncMock()
+        querydb_cog.mongo_service.disconnect = MagicMock()
 
         await querydb_cog._handle_treatments(mock_interaction, "invalid-date")
 
@@ -477,7 +477,7 @@ class TestQueryDBCog:  # type: ignore[misc]
     async def test_handle_treatments_connection_error(self, querydb_cog: Any, mock_interaction: Any) -> None:
         """Test treatments query with connection error."""
         querydb_cog.mongo_service.connect = AsyncMock(side_effect=Exception("Connection failed"))
-        querydb_cog.mongo_service.disconnect = AsyncMock()
+        querydb_cog.mongo_service.disconnect = MagicMock()
 
         await querydb_cog._handle_treatments(mock_interaction, "2024-01-15")
 
@@ -491,7 +491,7 @@ class TestQueryDBCog:  # type: ignore[misc]
         mock_collection = MagicMock()
         mock_collection.find = MagicMock(side_effect=Exception("Query failed"))
         querydb_cog.mongo_service.connect = AsyncMock()
-        querydb_cog.mongo_service.disconnect = AsyncMock()
+        querydb_cog.mongo_service.disconnect = MagicMock()
         mock_db = MagicMock()
         mock_db.__getitem__ = MagicMock(return_value=mock_collection)
         querydb_cog.mongo_service.db = mock_db
@@ -513,7 +513,7 @@ class TestQueryDBCog:  # type: ignore[misc]
         mock_cursor.limit = MagicMock(return_value=mock_cursor)
 
         querydb_cog.mongo_service.connect = AsyncMock()
-        querydb_cog.mongo_service.disconnect = AsyncMock()
+        querydb_cog.mongo_service.disconnect = MagicMock()
         mock_db = MagicMock()
         mock_db.__getitem__ = MagicMock(return_value=mock_collection)
         querydb_cog.mongo_service.db = mock_db

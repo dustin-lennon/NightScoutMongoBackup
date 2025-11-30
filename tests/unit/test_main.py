@@ -14,86 +14,89 @@ class TestRunAPIServer:
     def test_run_api_server_success(self) -> None:
         """Test API server starts successfully."""
         mock_app = MagicMock()
-        mock_uvicorn = MagicMock()
-        mock_uvicorn.run = MagicMock()
-
-        # Inject uvicorn into the function's globals since it's not imported
-        import nightscout_backup_bot.main as main_module
-
-        original_globals = main_module.__dict__.copy()
-        main_module.__dict__["uvicorn"] = mock_uvicorn
-
-        try:
-            with (
-                patch("nightscout_backup_bot.main.logger") as mock_logger,
-                patch("nightscout_backup_bot.api.server.app", mock_app),
-            ):
-                _run_api_server()
-
-                # Verify logger was called
-                mock_logger.info.assert_called_once()
-                # Verify uvicorn.run was called with correct parameters
-                mock_uvicorn.run.assert_called_once_with(mock_app, host="0.0.0.0", port=8000, log_level="info")
-        finally:
-            # Restore original globals
-            if "uvicorn" in main_module.__dict__ and "uvicorn" not in original_globals:
-                del main_module.__dict__["uvicorn"]
-            elif "uvicorn" in original_globals:
-                main_module.__dict__["uvicorn"] = original_globals["uvicorn"]
-
-    def test_run_api_server_import_error(self) -> None:
-        """Test API server handles import errors gracefully."""
-        # Create a mock that raises ImportError when the module is imported
-        import builtins
-
-        original_import = builtins.__import__
-
-        def mock_import(name: str, *args: Any, **kwargs: Any) -> Any:
-            if name == "nightscout_backup_bot.api.server" or name.endswith(".api.server"):
-                raise ImportError("Cannot import app")
-            return original_import(name, *args, **kwargs)
+        mock_config = MagicMock()
+        mock_server = MagicMock()
 
         with (
             patch("nightscout_backup_bot.main.logger") as mock_logger,
-            patch("builtins.__import__", side_effect=mock_import),
+            patch("nightscout_backup_bot.api.server.app", mock_app),
+            patch("nightscout_backup_bot.main.uvicorn.Config", return_value=mock_config) as mock_config_class,
+            patch("nightscout_backup_bot.main.uvicorn.Server", return_value=mock_server) as mock_server_class,
+            patch("nightscout_backup_bot.main.asyncio.new_event_loop") as mock_new_loop,
+            patch("nightscout_backup_bot.main.asyncio.set_event_loop") as mock_set_loop,
         ):
+            # Mock event loop to avoid blocking
+            mock_loop = MagicMock()
+            mock_new_loop.return_value = mock_loop
+
+            # Make run_until_complete return immediately
+            mock_loop.run_until_complete = MagicMock()
+
             _run_api_server()
 
-            # Verify error was logged
-            mock_logger.error.assert_called_once()
-            error_call = mock_logger.error.call_args
-            assert "API server failed to start" in str(error_call)
-            assert "error" in error_call.kwargs
+            # Verify logger was called
+            mock_logger.info.assert_called_once()
+            # Verify Config was created with correct parameters
+            mock_config_class.assert_called_once_with(mock_app, host="0.0.0.0", port=8000, log_level="info")
+            # Verify Server was created with config
+            mock_server_class.assert_called_once_with(mock_config)
+            # Verify event loop was set up and server.serve was called
+            mock_new_loop.assert_called_once()
+            mock_set_loop.assert_called_once()
+            mock_loop.run_until_complete.assert_called_once()
 
-    def test_run_api_server_runtime_error(self) -> None:
-        """Test API server handles runtime errors gracefully."""
-        mock_app = MagicMock()
-        mock_uvicorn = MagicMock()
-        mock_uvicorn.run = MagicMock(side_effect=RuntimeError("Server failed"))
+    def test_run_api_server_import_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test API server handles import errors gracefully."""
+        import sys
+        import types
 
-        # Inject uvicorn into the function's globals since it's not imported
-        import nightscout_backup_bot.main as main_module
+        # Create a fake module that raises ImportError when 'app' is accessed
+        fake_module = types.ModuleType("nightscout_backup_bot.api.server")
 
-        original_globals = main_module.__dict__.copy()
-        main_module.__dict__["uvicorn"] = mock_uvicorn
+        def raise_on_app_access() -> None:
+            raise ImportError("Cannot import app")
 
-        try:
-            with (
-                patch("nightscout_backup_bot.main.logger") as mock_logger,
-                patch("nightscout_backup_bot.api.server.app", mock_app),
-            ):
+        # Make accessing 'app' raise ImportError
+        fake_module.__getattr__ = lambda name: raise_on_app_access() if name == "app" else None
+
+        # Replace module in sys.modules
+        with patch.dict(sys.modules, {"nightscout_backup_bot.api.server": fake_module}):
+            with patch("nightscout_backup_bot.main.logger") as mock_logger:
                 _run_api_server()
 
                 # Verify error was logged
                 mock_logger.error.assert_called_once()
                 error_call = mock_logger.error.call_args
                 assert "API server failed to start" in str(error_call)
-        finally:
-            # Restore original globals
-            if "uvicorn" in main_module.__dict__ and "uvicorn" not in original_globals:
-                del main_module.__dict__["uvicorn"]
-            elif "uvicorn" in original_globals:
-                main_module.__dict__["uvicorn"] = original_globals["uvicorn"]
+                assert "error" in error_call.kwargs
+
+    def test_run_api_server_runtime_error(self) -> None:
+        """Test API server handles runtime errors gracefully."""
+        mock_app = MagicMock()
+        mock_config = MagicMock()
+        mock_server = MagicMock()
+        mock_server.serve = MagicMock(side_effect=RuntimeError("Server failed"))
+
+        with (
+            patch("nightscout_backup_bot.main.logger") as mock_logger,
+            patch("nightscout_backup_bot.api.server.app", mock_app),
+            patch("nightscout_backup_bot.main.uvicorn.Config", return_value=mock_config),
+            patch("nightscout_backup_bot.main.uvicorn.Server", return_value=mock_server),
+            patch("nightscout_backup_bot.main.asyncio.new_event_loop") as mock_new_loop,
+            patch("nightscout_backup_bot.main.asyncio.set_event_loop"),
+        ):
+            # Mock event loop
+            mock_loop = MagicMock()
+            mock_new_loop.return_value = mock_loop
+            # Make run_until_complete raise RuntimeError
+            mock_loop.run_until_complete = MagicMock(side_effect=RuntimeError("Server failed"))
+
+            _run_api_server()
+
+            # Verify error was logged
+            mock_logger.error.assert_called_once()
+            error_call = mock_logger.error.call_args
+            assert "API server failed to start" in str(error_call)
 
 
 class TestMain:

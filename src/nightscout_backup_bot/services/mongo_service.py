@@ -1,5 +1,6 @@
 """MongoDB service for NightScout data export."""
 
+import asyncio
 import json
 from datetime import UTC, datetime
 from typing import Any
@@ -15,29 +16,116 @@ logger = StructuredLogger("services.mongo")
 
 NOT_CONNECTED_ERROR = "Not connected to MongoDB. Call connect() first."
 
+# Connection configuration
+CONNECTION_TIMEOUT_MS = 30000  # 30 seconds for connection attempts
+SERVER_SELECTION_TIMEOUT_MS = 30000  # 30 seconds for server selection (includes DNS resolution)
+MAX_RETRY_ATTEMPTS = 3
+RETRY_BASE_DELAY = 2  # Base delay in seconds for exponential backoff
+
 
 class MongoService:
     def __init__(self) -> None:
         self.client: AsyncIOMotorClient[Any] | None = None
         self.db: AsyncIOMotorDatabase[Any] | None = None
 
+    def _is_dns_error(self, error_msg: str) -> bool:
+        """Check if error is related to DNS resolution."""
+        dns_indicators = [
+            "resolution lifetime expired",
+            "DNS operation timed out",
+            "No route to host",
+            "Name resolution failed",
+            "getaddrinfo failed",
+        ]
+        return any(indicator.lower() in error_msg.lower() for indicator in dns_indicators)
+
+    def _format_connection_error(self, error: Exception, attempt: int, max_attempts: int) -> str:
+        """Format a user-friendly error message."""
+        error_msg = str(error)
+
+        if self._is_dns_error(error_msg):
+            base_msg = "DNS resolution failed when connecting to MongoDB Atlas"
+            suggestions = [
+                "Check your network connection",
+                "Verify DNS servers are accessible",
+                "Try using a different DNS server (e.g., 8.8.8.8 or 1.1.1.1)",
+                "Check if MongoDB Atlas hostname is correct in your configuration",
+                "Verify firewall/network settings allow DNS queries",
+            ]
+            suggestion_text = "; ".join(suggestions)
+            return f"{base_msg} (attempt {attempt}/{max_attempts}): {error_msg}. Suggestions: {suggestion_text}"
+        else:
+            return f"Failed to connect to MongoDB (attempt {attempt}/{max_attempts}): {error_msg}"
+
     async def connect(self) -> None:
         """
-        Establish connection to MongoDB Atlas and set self.client and self.db.
+        Establish connection to MongoDB Atlas with retry logic.
+
+        Retries connection attempts up to MAX_RETRY_ATTEMPTS times with exponential backoff.
+        Uses longer timeouts to accommodate DNS resolution delays.
         """
-        try:
-            self.client = AsyncIOMotorClient(
-                settings.mongo_connection_string,
-                serverSelectionTimeoutMS=5000,
-                connectTimeoutMS=5000,
+        last_error: Exception | None = None
+
+        for attempt in range(1, MAX_RETRY_ATTEMPTS + 1):
+            try:
+                # Close existing client if any (from previous failed attempt)
+                if self.client is not None:
+                    try:
+                        self.client.close()
+                    except Exception:
+                        pass  # Ignore errors when closing failed connection
+                    self.client = None
+                    self.db = None
+
+                logger.info(
+                    "Attempting MongoDB connection",
+                    attempt=attempt,
+                    max_attempts=MAX_RETRY_ATTEMPTS,
+                    host=settings.mongo_host,
+                )
+
+                self.client = AsyncIOMotorClient(
+                    settings.mongo_connection_string,
+                    serverSelectionTimeoutMS=SERVER_SELECTION_TIMEOUT_MS,
+                    connectTimeoutMS=CONNECTION_TIMEOUT_MS,
+                    socketTimeoutMS=CONNECTION_TIMEOUT_MS,
+                )
+                self.db = self.client[settings.mongo_db]
+
+                # Verify connection with ping
+                await self.client.admin.command("ping")
+                logger.info("Successfully connected to MongoDB Atlas", host=settings.mongo_host)
+                return
+
+            except Exception as e:
+                last_error = e
+                error_msg = self._format_connection_error(e, attempt, MAX_RETRY_ATTEMPTS)
+
+                if attempt < MAX_RETRY_ATTEMPTS:
+                    # Calculate exponential backoff delay
+                    delay: float = RETRY_BASE_DELAY * (2 ** (attempt - 1))
+                    logger.warning(
+                        "MongoDB connection attempt failed, retrying",
+                        attempt=attempt,
+                        max_attempts=MAX_RETRY_ATTEMPTS,
+                        delay_seconds=delay,
+                        error=error_msg,
+                    )
+                    await asyncio.sleep(delay)
+                else:
+                    # Last attempt failed
+                    logger.error("Failed to connect to MongoDB after all retry attempts", error=error_msg)
+
+        # All attempts failed
+        if last_error:
+            last_error_msg = self._format_connection_error(last_error, MAX_RETRY_ATTEMPTS, MAX_RETRY_ATTEMPTS)
+            full_error_msg = (
+                f"Failed to connect to MongoDB Atlas after {MAX_RETRY_ATTEMPTS} attempts. "
+                f"Last error: {last_error_msg}"
             )
-            self.db = self.client[settings.mongo_db]
-            # Verify connection
-            await self.client.admin.command("ping")
-            logger.info("Successfully connected to MongoDB Atlas")
-        except Exception as e:
-            logger.error("Failed to connect to MongoDB", error=str(e))
-            raise
+            raise ConnectionError(full_error_msg) from last_error
+        else:
+            raise ConnectionError("Failed to connect to MongoDB Atlas: Unknown error")
 
     async def dump_database(self, backups_dir: str) -> dict[str, Any]:
         """
