@@ -22,6 +22,6 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Run Semgrep
-        run: semgrep ci --config=https://semgrep.dev/p/r/typescript
+        run: semgrep ci --config=https://semgrep.dev/p/r/python
         env:
           SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
