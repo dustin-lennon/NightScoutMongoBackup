@@ -17,7 +17,7 @@ jobs:
     name: Add Issues and PRs to Project
     runs-on: ubuntu-latest
     env:
-      PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER || '1' }}
+      PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
     steps:
       - name: Get project ID
         id: project
@@ -41,12 +41,12 @@ jobs:
             };
             try {
               const result = await github.graphql(query, variables);
-              
+
               if (!result.organization.projectV2) {
                 core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found in organization Stelth2000-Inc. Please create a project or update the PROJECT_NUMBER variable.`);
                 return;
               }
-              
+
               const projectId = result.organization.projectV2.id;
               const projectTitle = result.organization.projectV2.title;
               core.setOutput('projectId', projectId);
@@ -89,18 +89,18 @@ jobs:
             };
             try {
               const result = await github.graphql(query, variables);
-              
+
               if (!result.organization.projectV2) {
                 core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found.`);
                 return;
               }
-              
+
               const statusField = result.organization.projectV2.field;
               if (!statusField) {
                 core.setFailed(`❌ Status field not found in project. Please add a "Status" field to your project.`);
                 return;
               }
-              
+
               core.setOutput('fieldId', statusField.id);
 
               // Find or create status options
