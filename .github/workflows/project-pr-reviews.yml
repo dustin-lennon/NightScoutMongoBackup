@@ -1,0 +1,202 @@
+name: Project PR Review Status
+
+on:
+  pull_request:
+    types: [ready_for_review, review_requested]
+
+permissions:
+  contents: read
+  pull-requests: read
+  repository-projects: write
+
+jobs:
+  update-review-status:
+    name: Update Project Status for Reviews
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER || '1' }}
+    steps:
+      - name: Get project ID
+        id: project
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const projectNumber = parseInt(process.env.PROJECT_NUMBER || '1');
+            const query = `
+              query($owner: String!, $projectNumber: Int!) {
+                organization(login: $owner) {
+                  projectV2(number: $projectNumber) {
+                    id
+                    title
+                  }
+                }
+              }
+            `;
+            try {
+              const result = await github.graphql(query, {
+                owner: 'Stelth2000-Inc',
+                projectNumber: projectNumber
+              });
+              
+              if (!result.organization.projectV2) {
+                core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found in organization Stelth2000-Inc. Please create a project or update the PROJECT_NUMBER variable.`);
+                return;
+              }
+              
+              const projectId = result.organization.projectV2.id;
+              const projectTitle = result.organization.projectV2.title;
+              core.setOutput('projectId', projectId);
+              console.log(`✅ Found project: ${projectTitle} (${projectId})`);
+            } catch (error) {
+              if (error.errors && error.errors.some(e => e.type === 'NOT_FOUND')) {
+                core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found in organization Stelth2000-Inc. Please create a project or update the PROJECT_NUMBER variable.`);
+              } else {
+                throw error;
+              }
+            }
+
+      - name: Get Status field and options
+        id: status-field
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const projectNumber = parseInt(process.env.PROJECT_NUMBER || '1');
+            const query = `
+              query($owner: String!, $projectNumber: Int!) {
+                organization(login: $owner) {
+                  projectV2(number: $projectNumber) {
+                    field(name: "Status") {
+                      ... on ProjectV2SingleSelectField {
+                        id
+                        options {
+                          id
+                          name
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `;
+            try {
+              const result = await github.graphql(query, {
+                owner: 'Stelth2000-Inc',
+                projectNumber: projectNumber
+              });
+              
+              if (!result.organization.projectV2) {
+                core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found.`);
+                return;
+              }
+              
+              const statusField = result.organization.projectV2.field;
+              if (!statusField) {
+                core.setFailed(`❌ Status field not found in project. Please add a "Status" field to your project.`);
+                return;
+              }
+              
+              const options = statusField.options || [];
+
+              // Find status options (case-insensitive)
+              const findOption = (name) => {
+                const lowerName = name.toLowerCase();
+                return options.find(opt =>
+                  opt.name.toLowerCase() === lowerName ||
+                  opt.name.toLowerCase().includes(lowerName)
+                );
+              };
+
+              const inReviewOption = findOption('In Review') || findOption('Review') || findOption('Ready for Review');
+              const inProgressOption = findOption('In Progress') || findOption('In Progress');
+
+              core.setOutput('fieldId', statusField.id);
+              core.setOutput('inReviewOptionId', inReviewOption?.id || '');
+              core.setOutput('inProgressOptionId', inProgressOption?.id || '');
+            } catch (error) {
+              if (error.errors && error.errors.some(e => e.type === 'NOT_FOUND')) {
+                core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found.`);
+              } else {
+                throw error;
+              }
+            }
+
+      - name: Update status to In Review
+        if: github.event.action == 'ready_for_review' || github.event.action == 'review_requested'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const projectId = '${{ steps.project.outputs.projectId }}';
+            const prId = context.payload.pull_request.node_id;
+            const statusFieldId = '${{ steps.status-field.outputs.fieldId }}';
+            const inReviewOptionId = '${{ steps.status-field.outputs.inReviewOptionId }}';
+            const inProgressOptionId = '${{ steps.status-field.outputs.inProgressOptionId }}';
+
+            // Use In Review if available, otherwise fall back to In Progress
+            const targetOptionId = inReviewOptionId || inProgressOptionId;
+
+            if (!targetOptionId) {
+              console.log('⚠️ No suitable status option found. Please configure status options in the project.');
+              return;
+            }
+
+            // Find the project item for this PR
+            const query = `
+              query($projectId: ID!) {
+                node(id: $projectId) {
+                  ... on ProjectV2 {
+                    items(first: 100) {
+                      nodes {
+                        id
+                        content {
+                          ... on PullRequest {
+                            id
+                            number
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `;
+
+            try {
+              const projectData = await github.graphql(query, {
+                projectId: projectId
+              });
+
+              const item = projectData.node.items.nodes.find(
+                item => item.content?.id === prId
+              );
+
+              if (item) {
+                const updateMutation = `
+                  mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                    updateProjectV2ItemFieldValue(input: {
+                      projectId: $projectId
+                      itemId: $itemId
+                      fieldId: $fieldId
+                      value: {
+                        singleSelectOptionId: $optionId
+                      }
+                    }) {
+                      clientMutationId
+                    }
+                  }
+                `;
+
+                await github.graphql(updateMutation, {
+                  projectId: projectId,
+                  itemId: item.id,
+                  fieldId: statusFieldId,
+                  optionId: targetOptionId
+                });
+
+                const statusName = inReviewOptionId ? 'In Review' : 'In Progress';
+                console.log(`✅ Updated PR #${context.payload.pull_request.number} status to "${statusName}"`);
+              } else {
+                console.log(`ℹ️ PR #${context.payload.pull_request.number} not found in project`);
+              }
+            } catch (error) {
+              console.log(`⚠️ Could not update PR status: ${error.message}`);
+            }

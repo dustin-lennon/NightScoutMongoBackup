@@ -13,9 +13,15 @@ A clear and concise description of what the bug is.
 A clear and concise description of what you expected to happen.
 
 ### 🖥️ Steps to Reproduce
-1. Go to '...'
-2. Click on '...'
+1. Run command: `/command-name` (or describe the action)
+2. Provide input: `...` (describe what you entered)
 3. See the error
+
+**Example:**
+```
+/backup create
+Collection: users
+```
 
 ### 📸 Screenshots (if applicable)
 If applicable, add screenshots to help explain your problem.
