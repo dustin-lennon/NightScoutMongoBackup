@@ -54,17 +54,17 @@ jobs:
               }
 
               if (!result.organization.projectV2) {
-                core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found in organization Stelth2000-Inc.
-
-Debugging info:
-- Organization: Stelth2000-Inc
-- Project Number: ${projectNumber}
-- Response: ${JSON.stringify(result, null, 2)}
-
-Please verify:
-1. The project exists at: https://github.com/orgs/Stelth2000-Inc/projects/${projectNumber}
-2. The project is accessible to the repository
-3. The workflow has organization-level permissions`);
+                core.setFailed(
+                  '❌ ProjectV2 with number ' + projectNumber + ' not found in organization Stelth2000-Inc.\n\n' +
+                  'Debugging info:\n' +
+                  '- Organization: Stelth2000-Inc\n' +
+                  '- Project Number: ' + projectNumber + '\n' +
+                  '- Response: ' + JSON.stringify(result, null, 2) + '\n\n' +
+                  'Please verify:\n' +
+                  '1. The project exists at: https://github.com/orgs/Stelth2000-Inc/projects/' + projectNumber + '\n' +
+                  '2. The project is accessible to the repository\n' +
+                  '3. The workflow has organization-level permissions'
+                );
                 return;
               }
 
@@ -90,15 +90,15 @@ Please verify:
               }
 
               if (error.errors && error.errors.some(e => e.type === 'NOT_FOUND')) {
-                core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found in organization Stelth2000-Inc.
-
-Full error: ${error.message}
-Errors: ${JSON.stringify(error.errors, null, 2)}
-
-Please verify:
-1. The project exists at: https://github.com/orgs/Stelth2000-Inc/projects/${projectNumber}
-2. The workflow has organization-level permissions enabled
-3. The repository has access to organization projects`);
+                core.setFailed(
+                  '❌ ProjectV2 with number ' + projectNumber + ' not found in organization Stelth2000-Inc.\n\n' +
+                  'Full error: ' + error.message + '\n' +
+                  'Errors: ' + JSON.stringify(error.errors, null, 2) + '\n\n' +
+                  'Please verify:\n' +
+                  '1. The project exists at: https://github.com/orgs/Stelth2000-Inc/projects/' + projectNumber + '\n' +
+                  '2. The workflow has organization-level permissions enabled\n' +
+                  '3. The repository has access to organization projects'
+                );
               } else {
                 throw error;
               }
