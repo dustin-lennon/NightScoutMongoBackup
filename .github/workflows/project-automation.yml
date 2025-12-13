@@ -20,6 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
+      GH_TOKEN: ${{ secrets.ORG_PROJECT_TOKEN }}
     steps:
       - name: List available projects
         if: env.PROJECT_NUMBER == '' || env.PROJECT_NUMBER == null
@@ -67,6 +68,7 @@ jobs:
         id: project
         uses: actions/github-script@v8
         with:
+          github-token: ${{ secrets.ORG_PROJECT_TOKEN }}
           script: |
             const projectNumber = parseInt(process.env.PROJECT_NUMBER || '1');
             console.log(`🔍 Looking for ProjectV2 number ${projectNumber} in organization Stelth2000-Inc`);
@@ -212,6 +214,7 @@ jobs:
         id: status-field
         uses: actions/github-script@v8
         with:
+          github-token: ${{ secrets.ORG_PROJECT_TOKEN }}
           script: |
             const projectNumber = parseInt(process.env.PROJECT_NUMBER || '1');
             const query = `
@@ -274,6 +277,7 @@ jobs:
         if: github.event_name == 'issues' && (github.event.action == 'opened' || github.event.action == 'reopened')
         uses: actions/github-script@v8
         with:
+          github-token: ${{ secrets.ORG_PROJECT_TOKEN }}
           script: |
             const projectId = '${{ steps.project.outputs.projectId }}';
             const issueId = context.payload.issue.node_id;
@@ -333,6 +337,7 @@ jobs:
         if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'reopened' || github.event.action == 'ready_for_review')
         uses: actions/github-script@v8
         with:
+          github-token: ${{ secrets.ORG_PROJECT_TOKEN }}
           script: |
             const projectId = '${{ steps.project.outputs.projectId }}';
             const prId = context.payload.pull_request.node_id;
@@ -403,6 +408,7 @@ jobs:
         if: github.event_name == 'pull_request' && github.event.action == 'closed'
         uses: actions/github-script@v8
         with:
+          github-token: ${{ secrets.ORG_PROJECT_TOKEN }}
           script: |
             const projectId = '${{ steps.project.outputs.projectId }}';
             const prId = context.payload.pull_request.node_id;
@@ -479,6 +485,7 @@ jobs:
         if: github.event_name == 'issues' && github.event.action == 'closed'
         uses: actions/github-script@v8
         with:
+          github-token: ${{ secrets.ORG_PROJECT_TOKEN }}
           script: |
             const projectId = '${{ steps.project.outputs.projectId }}';
             const issueId = context.payload.issue.node_id;
