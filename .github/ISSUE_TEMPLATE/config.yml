@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📚 Documentation
+    url: https://github.com/Stelth2000-Inc/NightScoutMongoBackup#readme
+    about: Check the README for setup and usage information
+  - name: 🔒 Security Issues
+    url: https://github.com/Stelth2000-Inc/NightScoutMongoBackup/security/advisories/new
+    about: Please report security vulnerabilities privately
