@@ -47,7 +47,7 @@ jobs:
                 owner: 'Stelth2000-Inc',
                 first: 20
               });
-              
+
               if (result.organization && result.organization.projectsV2 && result.organization.projectsV2.nodes.length > 0) {
                 console.log('✅ Available projects:');
                 result.organization.projectsV2.nodes.forEach(project => {
@@ -118,14 +118,14 @@ jobs:
                     first: 10
                   });
                   if (listResult.organization && listResult.organization.projectsV2 && listResult.organization.projectsV2.nodes.length > 0) {
-                    availableProjects = '\n\nAvailable projects:\n' + 
+                    availableProjects = '\n\nAvailable projects:\n' +
                       listResult.organization.projectsV2.nodes.map(p => `  - Project #${p.number}: ${p.title}`).join('\n') +
                       '\n\n💡 Set the PROJECT_NUMBER repository variable to one of the project numbers above.';
                   }
                 } catch (e) {
                   // Ignore errors when listing projects
                 }
-                
+
                 core.setFailed(
                   '❌ ProjectV2 with number ' + projectNumber + ' not found in organization Stelth2000-Inc.\n\n' +
                   'Debugging info:\n' +
@@ -184,14 +184,14 @@ jobs:
                     first: 10
                   });
                   if (listResult.organization && listResult.organization.projectsV2 && listResult.organization.projectsV2.nodes.length > 0) {
-                    availableProjects = '\n\nAvailable projects:\n' + 
+                    availableProjects = '\n\nAvailable projects:\n' +
                       listResult.organization.projectsV2.nodes.map(p => `  - Project #${p.number}: ${p.title}`).join('\n') +
                       '\n\n💡 Set the PROJECT_NUMBER repository variable to one of the project numbers above.';
                   }
                 } catch (e) {
                   // Ignore errors when listing projects
                 }
-                
+
                 core.setFailed(
                   '❌ ProjectV2 with number ' + projectNumber + ' not found in organization Stelth2000-Inc.\n\n' +
                   'Full error: ' + error.message + '\n' +
