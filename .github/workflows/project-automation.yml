@@ -25,12 +25,16 @@ jobs:
         with:
           script: |
             const projectNumber = parseInt(process.env.PROJECT_NUMBER || '1');
+            console.log(`🔍 Looking for ProjectV2 number ${projectNumber} in organization Stelth2000-Inc`);
+            console.log(`📝 PROJECT_NUMBER env var: ${process.env.PROJECT_NUMBER || 'not set (using default 1)'}`);
+
             const query = `
               query($owner: String!, $projectNumber: Int!) {
                 organization(login: $owner) {
                   projectV2(number: $projectNumber) {
                     id
                     title
+                    public
                   }
                 }
               }
@@ -40,21 +44,61 @@ jobs:
               projectNumber: projectNumber
             };
             try {
+              console.log(`📤 Executing GraphQL query with variables:`, JSON.stringify(variables, null, 2));
               const result = await github.graphql(query, variables);
+              console.log(`📥 GraphQL response:`, JSON.stringify(result, null, 2));
+
+              if (!result.organization) {
+                core.setFailed(`❌ Organization 'Stelth2000-Inc' not found or not accessible. Check organization permissions.`);
+                return;
+              }
 
               if (!result.organization.projectV2) {
-                core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found in organization Stelth2000-Inc. Please create a project or update the PROJECT_NUMBER variable.`);
+                core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found in organization Stelth2000-Inc.
+
+Debugging info:
+- Organization: Stelth2000-Inc
+- Project Number: ${projectNumber}
+- Response: ${JSON.stringify(result, null, 2)}
+
+Please verify:
+1. The project exists at: https://github.com/orgs/Stelth2000-Inc/projects/${projectNumber}
+2. The project is accessible to the repository
+3. The workflow has organization-level permissions`);
                 return;
               }
 
               const projectId = result.organization.projectV2.id;
               const projectTitle = result.organization.projectV2.title;
+              const isPublic = result.organization.projectV2.public;
               core.setOutput('projectId', projectId);
               console.log(`✅ Found project: ${projectTitle} (${projectId})`);
+              console.log(`📊 Project visibility: ${isPublic ? 'Public' : 'Private'}`);
               return projectId;
             } catch (error) {
+              console.error(`❌ GraphQL Error:`, error);
+              console.error(`📋 Error details:`, JSON.stringify(error, null, 2));
+
+              if (error.errors) {
+                console.error(`🚨 GraphQL Errors:`, JSON.stringify(error.errors, null, 2));
+                error.errors.forEach(err => {
+                  console.error(`   - ${err.type}: ${err.message}`);
+                  if (err.path) {
+                    console.error(`     Path: ${err.path.join('.')}`);
+                  }
+                });
+              }
+
               if (error.errors && error.errors.some(e => e.type === 'NOT_FOUND')) {
-                core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found in organization Stelth2000-Inc. Please create a project or update the PROJECT_NUMBER variable.`);
+                core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found in organization Stelth2000-Inc.
+
+Full error: ${error.message}
+Errors: ${JSON.stringify(error.errors, null, 2)}
+
+Please verify:
+1. The project exists at: https://github.com/orgs/Stelth2000-Inc/projects/${projectNumber}
+2. The workflow has organization-level permissions enabled
+3. The repository has access to organization projects`);
               } else {
                 throw error;
               }
