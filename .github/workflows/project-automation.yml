@@ -17,7 +17,7 @@ jobs:
     name: Add Issues and PRs to Project
     runs-on: ubuntu-latest
     env:
-      PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER != '' && vars.PROJECT_NUMBER || '1' }}
+      PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
     steps:
       - name: Get project ID
         id: project
