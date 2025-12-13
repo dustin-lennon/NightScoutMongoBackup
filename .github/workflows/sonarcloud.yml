@@ -80,8 +80,8 @@ jobs:
         with:
           projectBaseDir: .
           args: >
-            -Dsonar.projectKey=dustin-lennon_NightScoutMongoBackup
-            -Dsonar.organization=dustin-lennon
+            -Dsonar.projectKey=Stelth2000-Inc_NightScoutMongoBackup
+            -Dsonar.organization=stelth2000-inc
             -Dsonar.sources=src
             -Dsonar.tests=tests
             -Dsonar.test.inclusions=tests/**/*.py
