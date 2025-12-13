@@ -43,24 +43,28 @@ jobs:
               const result = await github.graphql(query, variables);
 
               if (!result.organization.projectV2) {
-                core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found in organization Stelth2000-Inc. Please create a project or update the PROJECT_NUMBER variable.`);
+                core.warning(`⚠️ ProjectV2 with number ${projectNumber} not found in organization Stelth2000-Inc. Skipping project automation. Please create a project or update the PROJECT_NUMBER variable to enable this feature.`);
+                core.setOutput('projectFound', 'false');
                 return;
               }
 
               const projectId = result.organization.projectV2.id;
               const projectTitle = result.organization.projectV2.title;
               core.setOutput('projectId', projectId);
+              core.setOutput('projectFound', 'true');
               console.log(`✅ Found project: ${projectTitle} (${projectId})`);
               return projectId;
             } catch (error) {
               if (error.errors && error.errors.some(e => e.type === 'NOT_FOUND')) {
-                core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found in organization Stelth2000-Inc. Please create a project or update the PROJECT_NUMBER variable.`);
+                core.warning(`⚠️ ProjectV2 with number ${projectNumber} not found in organization Stelth2000-Inc. Skipping project automation. Please create a project or update the PROJECT_NUMBER variable to enable this feature.`);
+                core.setOutput('projectFound', 'false');
               } else {
                 throw error;
               }
             }
 
       - name: Get Status field ID
+        if: steps.project.outputs.projectFound == 'true'
         id: status-field
         uses: actions/github-script@v8
         with:
@@ -91,17 +95,20 @@ jobs:
               const result = await github.graphql(query, variables);
 
               if (!result.organization.projectV2) {
-                core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found.`);
+                core.warning(`⚠️ ProjectV2 with number ${projectNumber} not found. Skipping status field lookup.`);
+                core.setOutput('projectFound', 'false');
                 return;
               }
 
               const statusField = result.organization.projectV2.field;
               if (!statusField) {
-                core.setFailed(`❌ Status field not found in project. Please add a "Status" field to your project.`);
+                core.warning(`⚠️ Status field not found in project. Skipping status updates. Please add a "Status" field to your project.`);
+                core.setOutput('projectFound', 'false');
                 return;
               }
 
               core.setOutput('fieldId', statusField.id);
+              core.setOutput('projectFound', 'true');
 
               // Find or create status options
               const options = statusField.options || [];
@@ -116,14 +123,15 @@ jobs:
               return { fieldId: statusField.id, options };
             } catch (error) {
               if (error.errors && error.errors.some(e => e.type === 'NOT_FOUND')) {
-                core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found.`);
+                core.warning(`⚠️ ProjectV2 with number ${projectNumber} not found. Skipping status field lookup.`);
+                core.setOutput('projectFound', 'false');
               } else {
                 throw error;
               }
             }
 
       - name: Add issue to project
-        if: github.event_name == 'issues' && (github.event.action == 'opened' || github.event.action == 'reopened')
+        if: github.event_name == 'issues' && (github.event.action == 'opened' || github.event.action == 'reopened') && steps.project.outputs.projectFound == 'true'
         uses: actions/github-script@v8
         with:
           script: |
@@ -182,7 +190,7 @@ jobs:
             }
 
       - name: Add PR to project
-        if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'reopened' || github.event.action == 'ready_for_review')
+        if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'reopened' || github.event.action == 'ready_for_review') && steps.project.outputs.projectFound == 'true'
         uses: actions/github-script@v8
         with:
           script: |
@@ -252,7 +260,7 @@ jobs:
             }
 
       - name: Update status on PR merged/closed
-        if: github.event_name == 'pull_request' && github.event.action == 'closed'
+        if: github.event_name == 'pull_request' && github.event.action == 'closed' && steps.project.outputs.projectFound == 'true'
         uses: actions/github-script@v8
         with:
           script: |
@@ -328,7 +336,7 @@ jobs:
             }
 
       - name: Update status on issue closed
-        if: github.event_name == 'issues' && github.event.action == 'closed'
+        if: github.event_name == 'issues' && github.event.action == 'closed' && steps.project.outputs.projectFound == 'true'
         uses: actions/github-script@v8
         with:
           script: |
