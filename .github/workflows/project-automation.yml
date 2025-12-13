@@ -27,7 +27,7 @@ jobs:
             const projectNumber = parseInt(process.env.PROJECT_NUMBER || '1');
             console.log(`🔍 Looking for ProjectV2 number ${projectNumber} in organization Stelth2000-Inc`);
             console.log(`📝 PROJECT_NUMBER env var: ${process.env.PROJECT_NUMBER || 'not set (using default 1)'}`);
-            
+
             const query = `
               query($owner: String!, $projectNumber: Int!) {
                 organization(login: $owner) {
@@ -54,8 +54,8 @@ jobs:
               }
 
               if (!result.organization.projectV2) {
-                core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found in organization Stelth2000-Inc. 
-                
+                core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found in organization Stelth2000-Inc.
+
 Debugging info:
 - Organization: Stelth2000-Inc
 - Project Number: ${projectNumber}
@@ -78,7 +78,7 @@ Please verify:
             } catch (error) {
               console.error(`❌ GraphQL Error:`, error);
               console.error(`📋 Error details:`, JSON.stringify(error, null, 2));
-              
+
               if (error.errors) {
                 console.error(`🚨 GraphQL Errors:`, JSON.stringify(error.errors, null, 2));
                 error.errors.forEach(err => {
@@ -88,10 +88,10 @@ Please verify:
                   }
                 });
               }
-              
+
               if (error.errors && error.errors.some(e => e.type === 'NOT_FOUND')) {
-                core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found in organization Stelth2000-Inc. 
-                
+                core.setFailed(`❌ ProjectV2 with number ${projectNumber} not found in organization Stelth2000-Inc.
+
 Full error: ${error.message}
 Errors: ${JSON.stringify(error.errors, null, 2)}
 
